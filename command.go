@@ -5,11 +5,16 @@ import (
 	"strconv"
 )
 
+// Cmd is a redis command.
 type Cmd struct {
 	Key     []byte
 	Payload []byte
 }
 
+// Build makes a command which will be send to the shard for 'key'. All
+// redis commands work, but it's not advised to use commands which are stateful
+// ('SELECT'), involve multiple servers ('MGET', 'MGET', 'RENAME'), or are not
+// simple command->reply ('WATCH').
 func Build(key string, fields ...string) Cmd {
 	var b bytes.Buffer
 	writeCommand(&b, fields)

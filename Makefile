@@ -1,4 +1,18 @@
-.PHONY: test
+.PHONY: all gofmt test vet lint install
+
+all: gofmt test vet lint install
 
 test:
-	gofmt -w *go && go test
+	go test
+
+gofmt:
+	find . -name \*.go|xargs gofmt -w
+
+vet:
+	go vet ./...
+
+lint:
+	golint ./...
+
+install:
+	go install

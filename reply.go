@@ -26,7 +26,7 @@ import (
 type protocolError string
 
 func (pe protocolError) Error() string {
-	return fmt.Sprintf("redigo: %s (possible server error or unsupported concurrent read by application)", string(pe))
+	return fmt.Sprintf("redigo: %s", string(pe))
 }
 
 func readLine(r *bufio.Reader) ([]byte, error) {
@@ -68,7 +68,7 @@ func parseLen(p []byte) (int, error) {
 }
 
 // parseInt parses an integer reply.
-func parseInt(p []byte) (interface{}, error) {
+func parseInt(p []byte) (int64, error) {
 	if len(p) == 0 {
 		return 0, protocolError("malformed integer")
 	}
