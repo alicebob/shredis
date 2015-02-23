@@ -17,6 +17,7 @@ import (
 type Shred struct {
 	ket   continuum
 	conns map[string]conn
+	addrs map[string]string // just for debugging
 }
 
 // New starts all connections to redis daemons.
@@ -34,6 +35,7 @@ func New(hosts map[string]string) *Shred {
 	return &Shred{
 		ket:   ketamaNew(bs),
 		conns: conns,
+		addrs: hosts,
 	}
 }
 
@@ -79,8 +81,13 @@ func (s *Shred) Exec(cs []Cmd) []Res {
 }
 
 func (s *Shred) conn(key []byte) conn {
-	// fmt.Printf("%q -> %s\n", key, s.ket.Hash(string(key)))
+	// fmt.Printf("'%q' '%s'\n", key, s.ket.Hash(string(key)))
 	return s.conns[s.ket.Hash(string(key))]
+}
+
+// Addr gives the address for a key. For debugging/testing.
+func (s *Shred) Addr(key string) string {
+	return s.addrs[s.ket.Hash(key)]
 }
 
 // Res are the elements returned by Exec().
