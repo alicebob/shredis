@@ -11,6 +11,12 @@ package shredis
 
 import (
 	"sync"
+	"time"
+)
+
+const (
+	// connTimeout is the dial, read, and write timeout.
+	connTimeout = 50 * time.Millisecond
 )
 
 // Shred controls all connections. Make one with New().

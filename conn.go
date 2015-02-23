@@ -30,18 +30,13 @@ func (c conn) exec(a []action) {
 // handle deals with all actions written to conn.
 func (c conn) handle(addr string) {
 	for {
-		conn, err := net.Dial("tcp", addr)
+		conn, err := net.DialTimeout("tcp", addr, connTimeout)
 		if err != nil {
 			// TODO: do something sane here.
 			time.Sleep(50 * time.Millisecond)
 			continue
 		}
-		// c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout))
-		// c.conn.SetReadDeadline(time.Now().Add(c.readTimeout))
-		r := bufio.NewReader(conn)
-		w := bufio.NewWriter(conn)
-
-		if err := loopConnection(c, r, w); err == nil {
+		if err := loopConnection(c, conn); err == nil {
 			// graceful shutdown
 			conn.Close()
 			break
@@ -52,8 +47,12 @@ func (c conn) handle(addr string) {
 
 // loopConnection will keep writing commands to the server until either `as` is
 // closed or until we get any kind of error.
-func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer) error {
-	var outstanding []actionCB
+func loopConnection(c conn, tcpconn net.Conn) error {
+	var (
+		r           = bufio.NewReader(tcpconn)
+		w           = bufio.NewWriter(tcpconn)
+		outstanding []actionCB
+	)
 
 	for {
 		outstanding = outstanding[:0]
@@ -78,6 +77,7 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer) error {
 			}
 		}
 
+		tcpconn.SetWriteDeadline(time.Now().Add(connTimeout))
 		if err := w.Flush(); err != nil {
 			for _, c := range outstanding {
 				c(nil, err)
@@ -87,6 +87,7 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer) error {
 
 		var anyError error
 		for _, c := range outstanding {
+			tcpconn.SetReadDeadline(time.Now().Add(connTimeout))
 			res, err := readReply(r)
 			if err != nil {
 				anyError = err

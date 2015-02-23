@@ -29,7 +29,7 @@ func main() {
 		want := strings.Trim(f[1], "'")
 		want = want[:len(want)-2]
 		hashed := sh.Addr(key)
-        // fmt.Printf("%q -> %q == %q?\n", key, hashed, want)
+		// fmt.Printf("%q -> %q == %q?\n", key, hashed, want)
 		if hashed != want {
 			fmt.Printf("%q -> %q (want %q)\n", key, hashed, want)
 		}
