@@ -3,8 +3,8 @@
 //
 // Commands are shared by key, and shredis handles the connection logic: you
 // hand over the commands, and you'll get the replies in the same order,
-// regardless which the server the command was sent to. Commands are send in as
-// few packets as possible ('pipelined' in redis speak), even when then come
+// regardless of which server the command was sent to. Commands are sent in as
+// few packets as possible ('pipelined' in redis speak), even when they come
 // from multiple goroutines.
 //
 package shredis
