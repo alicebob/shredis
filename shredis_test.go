@@ -23,7 +23,7 @@ func TestBasic(t *testing.T) {
 	cs := []Cmd{
 		Build("TestKey", "GET", "TestKey"),
 	}
-	res := shr.Exec(cs)
+	res := shr.Exec(cs...)
 	if have, want := len(res), 1; have != want {
 		t.Fatalf("have %v, want %v", have, want)
 	}
@@ -52,7 +52,7 @@ func TestErr(t *testing.T) {
 
 	// invalid argument count
 	{
-		res := shr.Exec([]Cmd{Build("key", "SET", "key")})
+		res := shr.Exec(Build("key", "SET", "key"))
 		if have, want := len(res), 1; have != want {
 			t.Fatalf("have: %v, want :%v", have, want)
 		}
@@ -64,7 +64,7 @@ func TestErr(t *testing.T) {
 
 	// NIL reply on a GET, not an error.
 	{
-		res := shr.Exec([]Cmd{Build("nosuch", "GET", "nosuch")})
+		res := shr.Exec(Build("nosuch", "GET", "nosuch"))
 		if have, want := len(res), 1; have != want {
 			t.Fatalf("have: %v, want :%v", have, want)
 		}
@@ -97,7 +97,7 @@ func TestMultiple(t *testing.T) {
 	for i := 10; i > 0; i-- {
 		cs = append(cs, Build("TestKey", "GET", fmt.Sprintf("TestKey%d", i)))
 	}
-	res := shr.Exec(cs)
+	res := shr.Exec(cs...)
 	if have, want := len(res), 10; have != want {
 		t.Fatalf("have %v, want %v", have, want)
 	}
@@ -132,10 +132,7 @@ func TestHashed(t *testing.T) {
 	})
 	defer shr.Close()
 
-	cs := []Cmd{
-		Build("aap", "GET", "aap"),
-	}
-	res := shr.Exec(cs)
+	res := shr.Exec(Build("aap", "GET", "aap"))
 	if have, want := len(res), 1; have != want {
 		t.Fatalf("have %v, want %v", have, want)
 	}
@@ -171,7 +168,7 @@ func TestMany(t *testing.T) {
 				key := fmt.Sprintf("Key-%d-%d", i, j)
 				cs = append(cs, Build(key, "SET", key, "value for "+key))
 			}
-			res := shr.Exec(cs)
+			res := shr.Exec(cs...)
 			if have, want := len(res), 10; have != want {
 				t.Fatalf("have: %v, want :%v", have, want)
 			}
@@ -188,7 +185,7 @@ func TestMany(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		for j := 0; j < 10; j++ {
 			key := fmt.Sprintf("Key-%d-%d", i, j)
-			res := shr.Exec([]Cmd{Build(key, "GET", key)})
+			res := shr.Exec(Build(key, "GET", key))
 			if have, want := len(res), 1; have != want {
 				t.Fatalf("have: %v, want :%v", have, want)
 			}
@@ -199,4 +196,53 @@ func TestMany(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestAuth(t *testing.T) {
+	mr1, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mr1.Close()
+	mr1.Set("TestKey", "Value!")
+
+	shr := New(map[string]string{
+		"shard0": mr1.Addr(),
+	},
+		OptionAuth("secret!"),
+	)
+
+	res := shr.Exec(
+		Build("TestKey", "GET", "TestKey"),
+	)
+	if have, want := len(res), 1; have != want {
+		t.Fatalf("have %v, want %v", have, want)
+	}
+	r1 := res[0]
+	if r1.Err != nil {
+		// AUTH had an error, but that's irrelevant.
+		t.Fatalf("unexpected error: %v", r1.Err)
+	}
+
+	mr1.RequireAuth("secret!")
+	shr = New(map[string]string{
+		"shard0": mr1.Addr(),
+	},
+		OptionAuth("secret!"),
+	)
+	res = shr.Exec(
+		Build("TestKey", "GET", "TestKey"),
+	)
+	if have, want := len(res), 1; have != want {
+		t.Fatalf("have %v, want %v", have, want)
+	}
+	r1 = res[0]
+	if r1.Err != nil {
+		t.Fatalf("unexpected error: %v", r1.Err)
+	}
+	if have, want := string(r1.Res.([]byte)), "Value!"; have != want {
+		t.Fatalf("have %q (%T), want %q (%T)", have, have, want, want)
+	}
+
+	shr.Close()
 }

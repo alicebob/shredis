@@ -27,8 +27,10 @@ func (c conn) exec(a []action) {
 	c <- a
 }
 
-// handle deals with all actions written to conn.
-func (c conn) handle(addr string) {
+// handle deals with all actions written to conn. onConnect are commands which
+// will be executed on connect. Used for authentication.
+func (c conn) handle(addr string, onConnect []Cmd) {
+loop:
 	for {
 		conn, err := net.DialTimeout("tcp", addr, connTimeout)
 		if err != nil {
@@ -36,7 +38,29 @@ func (c conn) handle(addr string) {
 			time.Sleep(50 * time.Millisecond)
 			continue
 		}
-		if err := loopConnection(c, conn); err == nil {
+
+		var (
+			r = bufio.NewReader(conn)
+			w = bufio.NewWriter(conn)
+		)
+
+		for _, cmd := range onConnect {
+			conn.SetWriteDeadline(time.Now().Add(connTimeout))
+			if _, err := conn.Write(cmd.Payload); err != nil {
+				conn.Close()
+				time.Sleep(50 * time.Millisecond)
+				continue loop
+			}
+			conn.SetReadDeadline(time.Now().Add(connTimeout))
+			if _, err := readReply(r); err != nil {
+				// AUTH error won't be flagged.
+				conn.Close()
+				time.Sleep(50 * time.Millisecond)
+				continue loop
+			}
+		}
+
+		if err := loopConnection(c, r, w, conn); err == nil {
 			// graceful shutdown
 			conn.Close()
 			break
@@ -45,14 +69,10 @@ func (c conn) handle(addr string) {
 	}
 }
 
-// loopConnection will keep writing commands to the server until either `as` is
+// loopConnection will keep writing commands to the server until either `c` is
 // closed or until we get any kind of error.
-func loopConnection(c conn, tcpconn net.Conn) error {
-	var (
-		r           = bufio.NewReader(tcpconn)
-		w           = bufio.NewWriter(tcpconn)
-		outstanding []actionCB
-	)
+func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn) error {
+	var outstanding []actionCB
 
 	for {
 		outstanding = outstanding[:0]

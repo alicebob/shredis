@@ -17,7 +17,7 @@ func main() {
 		shredis.Build("Key", "GET", "Key"),
 		shredis.Build("Key2", "GET", "Key2"),
 	}
-	res := shr.Exec(cs)
+	res := shr.Exec(cs...)
 	for _, c := range res {
 		if c.Err != nil {
 			fmt.Printf("Command err: %s. Original command: %v\n", c.Err, c.Cmd)
