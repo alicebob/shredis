@@ -30,12 +30,27 @@ func (c conn) exec(a []action) {
 // handle deals with all actions written to conn. onConnect are commands which
 // will be executed on connect. Used for authentication.
 func (c conn) handle(addr string, onConnect []Cmd) {
+	// wait runs when there is a connection problem. We don't want to
+	// queue requests, just error them right away.
+	wait := func(err error, t time.Duration) {
+		timeout := time.After(t)
+		for {
+			select {
+			case <-timeout:
+				return
+			case cmds := <-c:
+				for _, cmd := range cmds {
+					cmd.done(nil, err)
+				}
+			}
+		}
+	}
+
 loop:
 	for {
 		conn, err := net.DialTimeout("tcp", addr, connTimeout)
 		if err != nil {
-			// TODO: do something sane here.
-			time.Sleep(50 * time.Millisecond)
+			wait(err, 50*time.Millisecond)
 			continue
 		}
 
@@ -48,14 +63,14 @@ loop:
 			conn.SetWriteDeadline(time.Now().Add(connTimeout))
 			if _, err := conn.Write(cmd.Payload); err != nil {
 				conn.Close()
-				time.Sleep(50 * time.Millisecond)
+				wait(err, 50*time.Millisecond)
 				continue loop
 			}
 			conn.SetReadDeadline(time.Now().Add(connTimeout))
 			if _, err := readReply(r); err != nil {
-				// AUTH error won't be flagged.
+				// AUTH errors won't be flagged.
 				conn.Close()
-				time.Sleep(50 * time.Millisecond)
+				wait(err, 50*time.Millisecond)
 				continue loop
 			}
 		}

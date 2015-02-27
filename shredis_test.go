@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis"
 )
@@ -20,10 +21,9 @@ func TestBasic(t *testing.T) {
 		"shard0": mr1.Addr(),
 	})
 
-	cs := []Cmd{
+	res := shr.Exec(
 		Build("TestKey", "GET", "TestKey"),
-	}
-	res := shr.Exec(cs...)
+	)
 	if have, want := len(res), 1; have != want {
 		t.Fatalf("have %v, want %v", have, want)
 	}
@@ -245,4 +245,48 @@ func TestAuth(t *testing.T) {
 	}
 
 	shr.Close()
+}
+
+func TestReconnect(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mr.Close()
+	mr.Set("TestKey", "Value!")
+
+	shr := New(map[string]string{
+		"shard0": mr.Addr(),
+	})
+	defer shr.Close()
+
+	mr.Close()
+
+	res := shr.Exec(
+		Build("TestKey", "GET", "TestKey"),
+	)
+	if res[0].Err == nil {
+		t.Fatalf("expected an error")
+	}
+
+	time.Sleep(10 * time.Millisecond)
+	n := time.Now()
+	res = shr.Exec(
+		Build("TestKey", "GET", "TestKey"),
+	)
+	if res[0].Err == nil {
+		t.Fatalf("expected an error")
+	}
+	if d := time.Since(n); d > time.Millisecond {
+		t.Fatalf("reply took too long: %s", d)
+	}
+
+	mr.Restart()
+	time.Sleep(50 * time.Millisecond)
+	res = shr.Exec(
+		Build("TestKey", "GET", "TestKey"),
+	)
+	if res[0].Err != nil {
+		t.Fatalf("expected no error: %v", res[0].Err)
+	}
 }
