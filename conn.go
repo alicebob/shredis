@@ -9,8 +9,8 @@ import (
 type actionCB func(interface{}, error)
 
 type action struct {
-	cmd  *Cmd
-	done actionCB
+	payload []byte
+	done    actionCB
 }
 
 type conn chan []action
@@ -100,7 +100,7 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn) 
 				return nil
 			}
 			for _, a := range as {
-				w.Write(a.cmd.payload)
+				w.Write(a.payload)
 				outstanding = append(outstanding, a.done)
 			}
 			// see if there are more commands waiting

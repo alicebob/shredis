@@ -80,7 +80,7 @@ func (s *Shred) Exec(cs ...*Cmd) {
 		wg.Add(1)
 		conn := s.conn(c.key)
 		ac[conn] = append(ac[conn], action{
-			cmd: c,
+			payload: c.payload,
 			done: func(c *Cmd) actionCB {
 				return func(res interface{}, err error) {
 					c.res = res
