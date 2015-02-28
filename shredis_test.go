@@ -263,3 +263,11 @@ func TestReconnect(t *testing.T) {
 		t.Fatalf("expected no error: %v", err)
 	}
 }
+
+func TestBrokenClose(t *testing.T) {
+	// Close() works with a broken server.
+	shr := New(map[string]string{
+		"shard0": "localhost:999999",
+	})
+	shr.Close()
+}
