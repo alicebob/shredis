@@ -56,10 +56,10 @@ func New(hosts map[string]string, options ...Option) *Shred {
 
 		s.connwg.Add(1)
 		c := newConn()
-		go func() {
+		go func(h string) {
 			c.handle(h, s.onConnect)
 			s.connwg.Done()
-		}()
+		}(h)
 		s.conns[l] = c
 	}
 	s.ket = ketamaNew(bs)
