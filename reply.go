@@ -26,7 +26,7 @@ import (
 type protocolError string
 
 func (pe protocolError) Error() string {
-	return fmt.Sprintf("redigo: %s", string(pe))
+	return fmt.Sprintf("shredis: %s", string(pe))
 }
 
 func readLine(r *bufio.Reader) ([]byte, error) {

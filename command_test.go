@@ -23,3 +23,95 @@ func TestCommand(t *testing.T) {
 		}
 	}
 }
+
+func TestGetString(t *testing.T) {
+	for _, c := range []struct {
+		have *Cmd
+		err  string
+		want string
+	}{
+		{
+			have: &Cmd{
+				res: []byte("a string"),
+			},
+			want: "a string",
+		},
+		{
+			have: &Cmd{
+				res: 12,
+			},
+			err:  "unexpected value. have int, want []byte",
+			want: "",
+		},
+		{
+			have: &Cmd{
+				res: nil,
+			},
+			want: "",
+		},
+	} {
+		s, err := c.have.GetString()
+		var haveerr string
+		if err != nil {
+			haveerr = err.Error()
+		}
+		if have, want := haveerr, c.err; have != want {
+			t.Errorf("have: %q, want: %q", have, want)
+		}
+		if have, want := s, c.want; have != want {
+			t.Errorf("have: %q, want: %q", have, want)
+		}
+	}
+}
+
+func TestGetInt(t *testing.T) {
+	for _, c := range []struct {
+		have *Cmd
+		err  string
+		want int
+	}{
+		{
+			have: &Cmd{
+				res: []byte("42"),
+			},
+			want: 42,
+		},
+		{
+			have: &Cmd{
+				res: 12,
+			},
+			want: 12,
+		},
+		{
+			have: &Cmd{
+				res: int64(12),
+			},
+			want: 12,
+		},
+		{
+			have: &Cmd{
+				res: []byte("a string"),
+			},
+			err: "strconv.ParseInt: parsing \"a string\": invalid syntax",
+		},
+		// not present is a 0.
+		{
+			have: &Cmd{
+				res: nil,
+			},
+			want: 0,
+		},
+	} {
+		s, err := c.have.GetInt()
+		var haveerr string
+		if err != nil {
+			haveerr = err.Error()
+		}
+		if have, want := haveerr, c.err; have != want {
+			t.Errorf("have: %q, want: %q", have, want)
+		}
+		if have, want := s, c.want; have != want {
+			t.Errorf("have: %q, want: %q", have, want)
+		}
+	}
+}

@@ -49,6 +49,28 @@ func (c *Cmd) GetString() (string, error) {
 	}
 }
 
+// GetInt returns the value of Get() if it's either a int in REPL, or if it's a
+// string which can be converterd to an int. If the key is not set the value
+// will be 0.
+func (c *Cmd) GetInt() (int, error) {
+	if c.err != nil {
+		return 0, c.err
+	}
+	if c.res == nil {
+		return 0, nil
+	}
+	switch x := c.res.(type) {
+	case int:
+		return x, nil
+	case int64:
+		return int(x), nil
+	case []byte:
+		return strconv.Atoi(string(x))
+	default:
+		return 0, fmt.Errorf("unexpected value. have %T, want int-like", x)
+	}
+}
+
 func writeCommand(b *bytes.Buffer, fields []string) {
 	writeLen(b, '*', len(fields))
 	for _, f := range fields {
