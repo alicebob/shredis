@@ -2,25 +2,50 @@ package shredis
 
 import (
 	"bytes"
+	"fmt"
 	"strconv"
 )
 
 // Cmd is a redis command.
 type Cmd struct {
-	Key     []byte
-	Payload []byte
+	key     []byte
+	payload []byte
+	res     interface{}
+	err     error
 }
 
 // Build makes a command which will be send to the shard for 'key'. All
 // redis commands work, but it's not advised to use commands which are stateful
 // ('SELECT'), involve multiple servers ('MGET', 'MGET', 'RENAME'), or are not
 // simple command->reply ('WATCH').
-func Build(key string, fields ...string) Cmd {
+func Build(key string, fields ...string) *Cmd {
 	var b bytes.Buffer
 	writeCommand(&b, fields)
-	return Cmd{
-		Key:     []byte(key),
-		Payload: b.Bytes(),
+	return &Cmd{
+		key:     []byte(key),
+		payload: b.Bytes(),
+	}
+}
+
+// Get returns redis' result.
+func (c *Cmd) Get() (res interface{}, err error) {
+	return c.res, c.err
+}
+
+// GetString returns the value if it's a single string. If the key is not set
+// the returned string will be empty.
+func (c *Cmd) GetString() (string, error) {
+	if c.err != nil {
+		return "", c.err
+	}
+	if c.res == nil {
+		return "", nil
+	}
+	switch x := c.res.(type) {
+	case []byte:
+		return string(x), nil
+	default:
+		return "", fmt.Errorf("unexpected value. have %T, want []byte", x)
 	}
 }
 

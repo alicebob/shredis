@@ -21,17 +21,13 @@ func TestBasic(t *testing.T) {
 		"shard0": mr1.Addr(),
 	})
 
-	res := shr.Exec(
-		Build("TestKey", "GET", "TestKey"),
-	)
-	if have, want := len(res), 1; have != want {
-		t.Fatalf("have %v, want %v", have, want)
+	get := Build("TestKey", "GET", "TestKey")
+	shr.Exec(get)
+	value, err := get.Get()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	r1 := res[0]
-	if r1.Err != nil {
-		t.Fatalf("unexpected error: %v", r1.Err)
-	}
-	if have, want := string(r1.Res.([]byte)), "Value!"; have != want {
+	if have, want := string(value.([]byte)), "Value!"; have != want {
 		t.Fatalf("have %q (%T), want %q (%T)", have, have, want, want)
 	}
 
@@ -52,28 +48,25 @@ func TestErr(t *testing.T) {
 
 	// invalid argument count
 	{
-		res := shr.Exec(Build("key", "SET", "key"))
-		if have, want := len(res), 1; have != want {
-			t.Fatalf("have: %v, want :%v", have, want)
-		}
+		c := Build("key", "SET", "key")
+		shr.Exec(c)
 		want := "ERR wrong number of arguments for 'set' command"
-		if have := res[0].Err; have.Error() != want {
+		_, err := c.Get()
+		if have := err; have.Error() != want {
 			t.Fatalf("have: %v, want: %v", have, want)
 		}
 	}
 
 	// NIL reply on a GET, not an error.
 	{
-		res := shr.Exec(Build("nosuch", "GET", "nosuch"))
-		if have, want := len(res), 1; have != want {
+		g := Build("nosuch", "GET", "nosuch")
+		shr.Exec(g)
+		res, err := g.Get()
+		if have, want := err, error(nil); have != want {
 			t.Fatalf("have: %v, want :%v", have, want)
 		}
-		r0 := res[0]
-		if have, want := r0.Err, error(nil); have != want {
-			t.Fatalf("have: %v, want :%v", have, want)
-		}
-		if r0.Res != nil {
-			t.Fatalf("not a nil response: %#v", res[0].Res)
+		if res != nil {
+			t.Fatalf("not a nil response: %#v", res)
 		}
 	}
 }
@@ -93,19 +86,18 @@ func TestMultiple(t *testing.T) {
 		"shard0": mr1.Addr(),
 	})
 
-	var cs []Cmd
+	var cs []*Cmd
 	for i := 10; i > 0; i-- {
-		cs = append(cs, Build("TestKey", "GET", fmt.Sprintf("TestKey%d", i)))
+		key := fmt.Sprintf("TestKey%d", i)
+		cs = append(cs, Build(key, "GET", key))
 	}
-	res := shr.Exec(cs...)
-	if have, want := len(res), 10; have != want {
-		t.Fatalf("have %v, want %v", have, want)
-	}
-	for i, r := range res {
-		if r.Err != nil {
-			t.Fatalf("unexpected error: %v", r.Err)
+	shr.Exec(cs...)
+	for i, c := range cs {
+		res, err := c.Get()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
-		if have, want := string(r.Res.([]byte)), fmt.Sprintf("Value: %d", 10-i); have != want {
+		if have, want := string(res.([]byte)), fmt.Sprintf("Value: %d", 10-i); have != want {
 			t.Fatalf("have %q (%T), want %q (%T)", have, have, want, want)
 		}
 	}
@@ -132,15 +124,13 @@ func TestHashed(t *testing.T) {
 	})
 	defer shr.Close()
 
-	res := shr.Exec(Build("aap", "GET", "aap"))
-	if have, want := len(res), 1; have != want {
-		t.Fatalf("have %v, want %v", have, want)
+	get := Build("aap", "GET", "aap")
+	shr.Exec(get)
+	res, err := get.Get()
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
 	}
-	r1 := res[0]
-	if r1.Err != nil {
-		t.Fatalf("unexpected error: %v", r1.Err)
-	}
-	if have, want := string(r1.Res.([]byte)), "Value!"; have != want {
+	if have, want := string(res.([]byte)), "Value!"; have != want {
 		t.Fatalf("have %q (%T), want %q (%T)", have, have, want, want)
 	}
 }
@@ -163,18 +153,15 @@ func TestMany(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		wg.Add(1)
 		go func(i int) {
-			var cs []Cmd
+			var cs []*Cmd
 			for j := 0; j < 10; j++ {
 				key := fmt.Sprintf("Key-%d-%d", i, j)
 				cs = append(cs, Build(key, "SET", key, "value for "+key))
 			}
-			res := shr.Exec(cs...)
-			if have, want := len(res), 10; have != want {
-				t.Fatalf("have: %v, want :%v", have, want)
-			}
-			for _, r := range res {
-				if r.Err != nil {
-					t.Fatal(r.Err)
+			shr.Exec(cs...)
+			for _, r := range cs {
+				if _, err := r.Get(); err != nil {
+					t.Fatal(err)
 				}
 			}
 			wg.Done()
@@ -185,13 +172,13 @@ func TestMany(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		for j := 0; j < 10; j++ {
 			key := fmt.Sprintf("Key-%d-%d", i, j)
-			res := shr.Exec(Build(key, "GET", key))
-			if have, want := len(res), 1; have != want {
-				t.Fatalf("have: %v, want :%v", have, want)
+			get := Build(key, "GET", key)
+			shr.Exec(get)
+			res, err := get.Get()
+			if err != nil {
+				t.Fatal(err)
 			}
-			t.Logf("payload: %q", res[0].Cmd.Payload)
-			t.Logf("res: %#v", res)
-			if have, want := string(res[0].Res.([]byte)), "value for "+key; have != want {
+			if have, want := string(res.([]byte)), "value for "+key; have != want {
 				t.Fatalf("have: %v, want :%v", have, want)
 			}
 		}
@@ -212,16 +199,12 @@ func TestAuth(t *testing.T) {
 		OptionAuth("secret!"),
 	)
 
-	res := shr.Exec(
-		Build("TestKey", "GET", "TestKey"),
-	)
-	if have, want := len(res), 1; have != want {
-		t.Fatalf("have %v, want %v", have, want)
-	}
-	r1 := res[0]
-	if r1.Err != nil {
+	get := Build("TestKey", "GET", "TestKey")
+	shr.Exec(get)
+	res, err := get.Get()
+	if err != nil {
 		// AUTH had an error, but that's irrelevant.
-		t.Fatalf("unexpected error: %v", r1.Err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 
 	mr1.RequireAuth("secret!")
@@ -230,17 +213,12 @@ func TestAuth(t *testing.T) {
 	},
 		OptionAuth("secret!"),
 	)
-	res = shr.Exec(
-		Build("TestKey", "GET", "TestKey"),
-	)
-	if have, want := len(res), 1; have != want {
-		t.Fatalf("have %v, want %v", have, want)
+	shr.Exec(get)
+	res, err = get.Get()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	r1 = res[0]
-	if r1.Err != nil {
-		t.Fatalf("unexpected error: %v", r1.Err)
-	}
-	if have, want := string(r1.Res.([]byte)), "Value!"; have != want {
+	if have, want := string(res.([]byte)), "Value!"; have != want {
 		t.Fatalf("have %q (%T), want %q (%T)", have, have, want, want)
 	}
 
@@ -262,19 +240,16 @@ func TestReconnect(t *testing.T) {
 
 	mr.Close()
 
-	res := shr.Exec(
-		Build("TestKey", "GET", "TestKey"),
-	)
-	if res[0].Err == nil {
+	get := Build("TestKey", "GET", "TestKey")
+	shr.Exec(get)
+	if _, err := get.Get(); err == nil {
 		t.Fatalf("expected an error")
 	}
 
 	time.Sleep(10 * time.Millisecond)
 	n := time.Now()
-	res = shr.Exec(
-		Build("TestKey", "GET", "TestKey"),
-	)
-	if res[0].Err == nil {
+	shr.Exec(get)
+	if _, err := get.Get(); err == nil {
 		t.Fatalf("expected an error")
 	}
 	if d := time.Since(n); d > time.Millisecond {
@@ -283,10 +258,8 @@ func TestReconnect(t *testing.T) {
 
 	mr.Restart()
 	time.Sleep(50 * time.Millisecond)
-	res = shr.Exec(
-		Build("TestKey", "GET", "TestKey"),
-	)
-	if res[0].Err != nil {
-		t.Fatalf("expected no error: %v", res[0].Err)
+	shr.Exec(get)
+	if _, err := get.Get(); err != nil {
+		t.Fatalf("expected no error: %v", err)
 	}
 }

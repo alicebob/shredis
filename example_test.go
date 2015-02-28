@@ -13,16 +13,17 @@ func main() {
 		"shard2": "127.0.0.1:6391",
 		"shard3": "127.0.0.1:6392",
 	})
-	cs := []shredis.Cmd{
+	cs := []*shredis.Cmd{
 		shredis.Build("Key", "GET", "Key"),
 		shredis.Build("Key2", "GET", "Key2"),
 	}
-	res := shr.Exec(cs...)
-	for _, c := range res {
-		if c.Err != nil {
-			fmt.Printf("Command err: %s. Original command: %v\n", c.Err, c.Cmd)
+	shr.Exec(cs[0], cs[1])
+	for _, c := range cs {
+		res, err := c.Get()
+		if err != nil {
+			fmt.Printf("Command err: %s\n", err)
 			continue
 		}
-		fmt.Printf("Result: %s, command: %s\n", c.Res, c.Cmd)
+		fmt.Printf("Result: %s\n", res)
 	}
 }

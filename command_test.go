@@ -6,20 +6,20 @@ import (
 )
 
 func TestCommand(t *testing.T) {
-	for _, c := range []struct{ have, want Cmd }{
+	for _, c := range []struct{ have, want *Cmd }{
 		{
 			have: Build("k", "GET", "k"),
-			want: Cmd{
-				Key:     []byte("k"),
-				Payload: []byte("*2\r\n$3\r\nGET\r\n$1\r\nk\r\n"),
+			want: &Cmd{
+				key:     []byte("k"),
+				payload: []byte("*2\r\n$3\r\nGET\r\n$1\r\nk\r\n"),
 			},
 		},
 	} {
-		if !bytes.Equal(c.have.Payload, c.want.Payload) {
-			t.Errorf("have: %q, want: %q", c.have.Payload, c.want.Payload)
+		if !bytes.Equal(c.have.payload, c.want.payload) {
+			t.Errorf("have: %q, want: %q", c.have.payload, c.want.payload)
 		}
-		if !bytes.Equal(c.have.Key, c.want.Key) {
-			t.Errorf("have: %v, want: %v", c.have.Key, c.want.Key)
+		if !bytes.Equal(c.have.key, c.want.key) {
+			t.Errorf("have: %v, want: %v", c.have.key, c.want.key)
 		}
 	}
 }
