@@ -59,6 +59,11 @@ func TestBuilds(t *testing.T) {
 			key:     "aap",
 			payload: []string{"SET", "aap", "noot", "EX", "7"},
 		},
+		{
+			have:    BuildExpire("aap", 7500*time.Millisecond),
+			key:     "aap",
+			payload: []string{"EXPIRE", "aap", "7"},
+		},
 	} {
 		var b bytes.Buffer
 		writeCommand(&b, c.payload)
