@@ -25,6 +25,7 @@ type Shred struct {
 	conns     map[string]conn
 	addrs     map[string]string // just for debugging
 	onConnect []*Cmd
+	connwg    sync.WaitGroup
 }
 
 // Option is an option to New.
@@ -52,19 +53,25 @@ func New(hosts map[string]string, options ...Option) *Shred {
 
 	for l, h := range hosts {
 		bs = append(bs, bucket{Label: l, Weight: 1})
+
+		s.connwg.Add(1)
 		c := newConn()
-		go c.handle(h, s.onConnect)
+		go func() {
+			c.handle(h, s.onConnect)
+			s.connwg.Done()
+		}()
 		s.conns[l] = c
 	}
 	s.ket = ketamaNew(bs)
 	return s
 }
 
-// Close asks all connections to close.
+// Close closes all connections. Blocks.
 func (s *Shred) Close() {
 	for _, c := range s.conns {
 		c.close()
 	}
+	s.connwg.Wait()
 }
 
 // Exec is the way to execute commands. It is goroutinesafe.
