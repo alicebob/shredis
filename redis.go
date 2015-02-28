@@ -1,5 +1,10 @@
 package shredis
 
+import (
+	"strconv"
+	"time"
+)
+
 // BuildGet builds a GET command
 func BuildGet(key string) *Cmd {
 	return Build(key, "GET", key)
@@ -7,5 +12,10 @@ func BuildGet(key string) *Cmd {
 
 // BuildSet builds a SET command
 func BuildSet(key, value string) *Cmd {
-	return Build(key, "SET", key)
+	return Build(key, "SET", key, value)
+}
+
+// BuildSetEx builds a SET with EX command
+func BuildSetEx(key, value string, ttl time.Duration) *Cmd {
+	return Build(key, "SET", key, value, "EX", strconv.Itoa(int(ttl.Seconds())))
 }
