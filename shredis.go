@@ -1,9 +1,11 @@
 // Package shredis is a sharded redis client, with the idea of being used as a
 // replacement for twemproxy/nutcracker.
 //
-// Commands are shared by key, and shredis handles the connection logic: you
-// hand over the commands, and you checks the indivual command for errors and
+// Commands are sharded by a user-specified key, and send to single redis
+// instance. Shredis handles the connection logic: you hand over the commands,
+// and after execution you check the individual commands for their errors and
 // values.
+//
 // Commands are sent in as few packets as possible ('pipelined' in redis
 // speak), even when they come from multiple goroutines.
 //
@@ -74,7 +76,7 @@ func (s *Shred) Close() {
 	s.connwg.Wait()
 }
 
-// Exec is the way to execute commands. It is goroutinesafe.
+// Exec is the way to execute commands. It is goroutine-safe.
 func (s *Shred) Exec(cs ...*Cmd) {
 	var (
 		wg = sync.WaitGroup{}
