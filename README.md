@@ -15,3 +15,7 @@ Shredis distributes keys the same as a twemproxy with this config:
 and all servers having weight 1.
 
 (with the distinction that Shredis won't handle MGET / MSET for you)
+
+# &c.
+
+[![Build Status](https://travis-ci.org/alicebob/shredis.svg?branch=master)](https://travis-ci.org/alicebob/shredis)
