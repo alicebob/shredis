@@ -1,11 +1,13 @@
 // Package shredis is a sharded redis client, with the idea of being used as a
 // replacement for twemproxy/nutcracker.
 //
-// Commands are shared by key, and shredis handles the connection logic: you
-// hand over the commands, and you'll get the replies in the same order,
-// regardless of which server the command was sent to. Commands are sent in as
-// few packets as possible ('pipelined' in redis speak), even when they come
-// from multiple goroutines.
+// Commands are sharded by a user-specified key, and send to single redis
+// instance. Shredis handles the connection logic: you hand over the commands,
+// and after execution you check the individual commands for their errors and
+// values.
+//
+// Commands are sent in as few packets as possible ('pipelined' in redis
+// speak), even when they come from multiple goroutines.
 //
 package shredis
 
@@ -24,7 +26,8 @@ type Shred struct {
 	ket       continuum
 	conns     map[string]conn
 	addrs     map[string]string // just for debugging
-	onConnect []Cmd
+	onConnect []*Cmd
+	connwg    sync.WaitGroup
 }
 
 // Option is an option to New.
@@ -52,45 +55,48 @@ func New(hosts map[string]string, options ...Option) *Shred {
 
 	for l, h := range hosts {
 		bs = append(bs, bucket{Label: l, Weight: 1})
+
+		s.connwg.Add(1)
 		c := newConn()
-		go c.handle(h, s.onConnect)
+		go func(h string) {
+			c.handle(h, s.onConnect)
+			s.connwg.Done()
+		}(h)
 		s.conns[l] = c
 	}
 	s.ket = ketamaNew(bs)
 	return s
 }
 
-// Close asks all connections to close.
+// Close closes all connections. Blocks.
 func (s *Shred) Close() {
 	for _, c := range s.conns {
 		c.close()
 	}
+	s.connwg.Wait()
 }
 
-// Exec is the way to execute commands. It is goroutinesafe. Result elements
-// are always in the same order as the commands.
-func (s *Shred) Exec(cs ...Cmd) []Res {
+// Exec is the way to execute commands. It is goroutine-safe.
+func (s *Shred) Exec(cs ...*Cmd) {
 	var (
-		r  = make([]Res, len(cs))
 		wg = sync.WaitGroup{}
 		ac = map[conn][]action{}
 	)
 
 	// map every action to a connection, collect all actions per connection, and
 	// execute them at the same time
-	for i, c := range cs {
-		r[i].Cmd = c
+	for _, c := range cs {
 		wg.Add(1)
-		conn := s.conn(c.Key)
+		conn := s.conn(c.key)
 		ac[conn] = append(ac[conn], action{
-			cmd: c,
-			done: func(i int) actionCB {
+			payload: c.payload,
+			done: func(c *Cmd) actionCB {
 				return func(res interface{}, err error) {
-					r[i].Res = res
-					r[i].Err = err
+					c.res = res
+					c.err = err
 					wg.Done()
 				}
-			}(i),
+			}(c),
 		})
 	}
 	for c, vs := range ac {
@@ -98,7 +104,6 @@ func (s *Shred) Exec(cs ...Cmd) []Res {
 	}
 
 	wg.Wait()
-	return r
 }
 
 func (s *Shred) conn(key []byte) conn {
@@ -108,11 +113,4 @@ func (s *Shred) conn(key []byte) conn {
 // Addr gives the address for a key. For debugging/testing.
 func (s *Shred) Addr(key string) string {
 	return s.addrs[s.ket.Hash(key)]
-}
-
-// Res are the elements returned by Exec().
-type Res struct {
-	Cmd Cmd
-	Err error
-	Res interface{}
 }

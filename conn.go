@@ -9,8 +9,8 @@ import (
 type actionCB func(interface{}, error)
 
 type action struct {
-	cmd  Cmd
-	done actionCB
+	payload []byte
+	done    actionCB
 }
 
 type conn chan []action
@@ -29,16 +29,20 @@ func (c conn) exec(a []action) {
 
 // handle deals with all actions written to conn. onConnect are commands which
 // will be executed on connect. Used for authentication.
-func (c conn) handle(addr string, onConnect []Cmd) {
+func (c conn) handle(addr string, onConnect []*Cmd) {
 	// wait runs when there is a connection problem. We don't want to
 	// queue requests, just error them right away.
-	wait := func(err error, t time.Duration) {
+	// The returned bool is whether things are still ok.
+	wait := func(err error, t time.Duration) bool {
 		timeout := time.After(t)
 		for {
 			select {
 			case <-timeout:
-				return
-			case cmds := <-c:
+				return true
+			case cmds, ok := <-c:
+				if !ok {
+					return false
+				}
 				for _, cmd := range cmds {
 					cmd.done(nil, err)
 				}
@@ -50,7 +54,9 @@ loop:
 	for {
 		conn, err := net.DialTimeout("tcp", addr, connTimeout)
 		if err != nil {
-			wait(err, 50*time.Millisecond)
+			if !wait(err, 50*time.Millisecond) {
+				break
+			}
 			continue
 		}
 
@@ -61,16 +67,20 @@ loop:
 
 		for _, cmd := range onConnect {
 			conn.SetWriteDeadline(time.Now().Add(connTimeout))
-			if _, err := conn.Write(cmd.Payload); err != nil {
+			if _, err := conn.Write(cmd.payload); err != nil {
 				conn.Close()
-				wait(err, 50*time.Millisecond)
+				if !wait(err, 50*time.Millisecond) {
+					break loop
+				}
 				continue loop
 			}
 			conn.SetReadDeadline(time.Now().Add(connTimeout))
 			if _, err := readReply(r); err != nil {
 				// AUTH errors won't be flagged.
 				conn.Close()
-				wait(err, 50*time.Millisecond)
+				if !wait(err, 50*time.Millisecond) {
+					break loop
+				}
 				continue loop
 			}
 		}
@@ -100,7 +110,7 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn) 
 				return nil
 			}
 			for _, a := range as {
-				w.Write(a.cmd.Payload)
+				w.Write(a.payload)
 				outstanding = append(outstanding, a.done)
 			}
 			// see if there are more commands waiting
