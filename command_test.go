@@ -2,6 +2,7 @@ package shredis
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 )
 
@@ -64,6 +65,48 @@ func TestGetString(t *testing.T) {
 	}
 }
 
+func TestGetStrings(t *testing.T) {
+	for _, c := range []struct {
+		have *Cmd
+		err  string
+		want []string
+	}{
+		{
+			have: &Cmd{
+				res: []interface{}{
+					[]byte("string one"),
+					[]byte("string two"),
+				},
+			},
+			want: []string{"string one", "string two"},
+		},
+		{
+			have: &Cmd{
+				res: 12,
+			},
+			err:  "unexpected value. have int, want []interface{}",
+			want: nil,
+		},
+		{
+			have: &Cmd{
+				res: nil,
+			},
+			want: nil,
+		},
+	} {
+		s, err := c.have.GetStrings()
+		var haveerr string
+		if err != nil {
+			haveerr = err.Error()
+		}
+		if have, want := haveerr, c.err; have != want {
+			t.Errorf("have: %q, want: %q", have, want)
+		}
+		if have, want := s, c.want; !reflect.DeepEqual(have, want) {
+			t.Errorf("have: %q, want: %q", have, want)
+		}
+	}
+}
 func TestGetInt(t *testing.T) {
 	for _, c := range []struct {
 		have *Cmd

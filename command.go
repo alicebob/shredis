@@ -49,6 +49,31 @@ func (c *Cmd) GetString() (string, error) {
 	}
 }
 
+// GetStrings returns the value if it's a string slice. If the key is not set
+// the returned slice will be empty.
+func (c *Cmd) GetStrings() ([]string, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	if c.res == nil {
+		return nil, nil
+	}
+	s, ok := c.res.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected value. have %T, want []interface{}", c.res)
+	}
+	var res []string
+	for _, v := range s {
+		switch x := v.(type) {
+		case []byte:
+			res = append(res, string(x))
+		default:
+			return nil, fmt.Errorf("unexpected value. have a %T, want [][]byte", x)
+		}
+	}
+	return res, nil
+}
+
 // GetInt returns the value of Get() if it's either a int in REPL, or if it's a
 // string which can be converterd to an int. If the key is not set the value
 // will be 0.
