@@ -50,7 +50,7 @@ func TestErr(t *testing.T) {
 	{
 		c := Build("key", "SET", "key")
 		shr.Exec(c)
-		want := "ERR wrong number of arguments for 'set' command"
+		want := "shredis: ERR wrong number of arguments for 'set' command"
 		_, err := c.Get()
 		if have := err; have.Error() != want {
 			t.Fatalf("have: %v, want: %v", have, want)

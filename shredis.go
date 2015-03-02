@@ -12,6 +12,7 @@
 package shredis
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
@@ -93,7 +94,10 @@ func (s *Shred) Exec(cs ...*Cmd) {
 			done: func(c *Cmd) actionCB {
 				return func(res interface{}, err error) {
 					c.res = res
-					c.err = err
+					c.err = nil
+					if err != nil {
+						c.err = fmt.Errorf("shredis: %s", err)
+					}
 					wg.Done()
 				}
 			}(c),
