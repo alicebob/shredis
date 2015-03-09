@@ -107,6 +107,7 @@ func TestGetStrings(t *testing.T) {
 		}
 	}
 }
+
 func TestGetInt(t *testing.T) {
 	for _, c := range []struct {
 		have *Cmd
@@ -154,6 +155,102 @@ func TestGetInt(t *testing.T) {
 			t.Errorf("have: %q, want: %q", have, want)
 		}
 		if have, want := s, c.want; have != want {
+			t.Errorf("have: %q, want: %q", have, want)
+		}
+	}
+}
+
+func TestGetMapStringString(t *testing.T) {
+	for _, c := range []struct {
+		have *Cmd
+		err  string
+		want map[string]string
+	}{
+		{
+			have: &Cmd{
+				res: []interface{}{
+					[]byte("key one"),
+					[]byte("string one"),
+					[]byte("key two"),
+					[]byte("string two"),
+				},
+			},
+			want: map[string]string{
+				"key one": "string one",
+				"key two": "string two",
+			},
+		},
+		{
+			have: &Cmd{
+				res: 12,
+			},
+			err:  "unexpected value. have int, want []interface{}",
+			want: nil,
+		},
+		{
+			have: &Cmd{
+				res: nil,
+			},
+			want: nil,
+		},
+	} {
+		s, err := c.have.GetMapStringString()
+		var haveerr string
+		if err != nil {
+			haveerr = err.Error()
+		}
+		if have, want := haveerr, c.err; have != want {
+			t.Errorf("have: %q, want: %q", have, want)
+		}
+		if have, want := s, c.want; !reflect.DeepEqual(have, want) {
+			t.Errorf("have: %q, want: %q", have, want)
+		}
+	}
+}
+
+func TestGetMapIngString(t *testing.T) {
+	for _, c := range []struct {
+		have *Cmd
+		err  string
+		want map[int]string
+	}{
+		{
+			have: &Cmd{
+				res: []interface{}{
+					[]byte("1"),
+					[]byte("string one"),
+					2,
+					[]byte("string two"),
+				},
+			},
+			want: map[int]string{
+				1: "string one",
+				2: "string two",
+			},
+		},
+		{
+			have: &Cmd{
+				res: 12,
+			},
+			err:  "unexpected value. have int, want []interface{}",
+			want: nil,
+		},
+		{
+			have: &Cmd{
+				res: nil,
+			},
+			want: nil,
+		},
+	} {
+		s, err := c.have.GetMapIntString()
+		var haveerr string
+		if err != nil {
+			haveerr = err.Error()
+		}
+		if have, want := haveerr, c.err; have != want {
+			t.Errorf("have: %q, want: %q", have, want)
+		}
+		if have, want := s, c.want; !reflect.DeepEqual(have, want) {
 			t.Errorf("have: %q, want: %q", have, want)
 		}
 	}

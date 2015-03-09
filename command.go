@@ -41,12 +41,7 @@ func (c *Cmd) GetString() (string, error) {
 	if c.res == nil {
 		return "", nil
 	}
-	switch x := c.res.(type) {
-	case []byte:
-		return string(x), nil
-	default:
-		return "", fmt.Errorf("unexpected value. have %T, want []byte", x)
-	}
+	return resString(c.res)
 }
 
 // GetStrings returns the value if it's a string slice. If the key is not set
@@ -64,12 +59,11 @@ func (c *Cmd) GetStrings() ([]string, error) {
 	}
 	var res []string
 	for _, v := range s {
-		switch x := v.(type) {
-		case []byte:
-			res = append(res, string(x))
-		default:
-			return nil, fmt.Errorf("unexpected value. have a %T, want [][]byte", x)
+		k, err := resString(v)
+		if err != nil {
+			return nil, err
 		}
+		res = append(res, k)
 	}
 	return res, nil
 }
@@ -84,15 +78,89 @@ func (c *Cmd) GetInt() (int, error) {
 	if c.res == nil {
 		return 0, nil
 	}
-	switch x := c.res.(type) {
-	case int:
-		return x, nil
-	case int64:
-		return int(x), nil
+	return resInt(c.res)
+}
+
+// GetMapStringString returns the value if it's a map[string]string. If the key
+// is not set the returned map will be empty.
+func (c *Cmd) GetMapStringString() (map[string]string, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	if c.res == nil {
+		return nil, nil
+	}
+	s, ok := c.res.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected value. have %T, want []interface{}", c.res)
+	}
+
+	res := make(map[string]string, len(s)/2)
+	for len(s) > 1 {
+		k, err := resString(s[0])
+		if err != nil {
+			return nil, err
+		}
+		v, err := resString(s[1])
+		if err != nil {
+			return nil, err
+		}
+		res[k] = v
+		s = s[2:]
+	}
+	return res, nil
+}
+
+// GetMapIntString returns the value if it's a map[int]string. If the key
+// is not set the returned map will be empty.
+func (c *Cmd) GetMapIntString() (map[int]string, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	if c.res == nil {
+		return nil, nil
+	}
+	s, ok := c.res.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected value. have %T, want []interface{}", c.res)
+	}
+
+	res := make(map[int]string, len(s)/2)
+	for len(s) > 1 {
+		k, err := resInt(s[0])
+		if err != nil {
+			return nil, err
+		}
+		v, err := resString(s[1])
+		if err != nil {
+			return nil, err
+		}
+
+		res[k] = v
+		s = s[2:]
+	}
+	return res, nil
+}
+
+func resString(x interface{}) (string, error) {
+	switch k := x.(type) {
 	case []byte:
-		return strconv.Atoi(string(x))
+		return string(k), nil
 	default:
-		return 0, fmt.Errorf("unexpected value. have %T, want int-like", x)
+		return "", fmt.Errorf("unexpected value. have %T, want []byte", x)
+	}
+}
+
+func resInt(x interface{}) (int, error) {
+	switch k := x.(type) {
+	case int:
+		return k, nil
+	case int64:
+		return int(k), nil
+	case []byte:
+		return strconv.Atoi(string(k))
+	default:
+		return 0, fmt.Errorf("unexpected value. have %T, want int", x)
 	}
 }
 
