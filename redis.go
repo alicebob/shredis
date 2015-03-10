@@ -5,12 +5,12 @@ import (
 	"time"
 )
 
-// BuildGet builds a GET command
+// BuildGet is shorthand for Build(key, "GET", key)
 func BuildGet(key string) *Cmd {
 	return Build(key, "GET", key)
 }
 
-// BuildSet builds a SET command
+// BuildSet is shorthand for Build(key, "SET", key, value)
 func BuildSet(key, value string) *Cmd {
 	return Build(key, "SET", key, value)
 }
@@ -23,4 +23,14 @@ func BuildSetEx(key, value string, ttl time.Duration) *Cmd {
 // BuildExpire builds an EXPIRE
 func BuildExpire(key string, ttl time.Duration) *Cmd {
 	return Build(key, "EXPIRE", key, strconv.Itoa(int(ttl.Seconds())))
+}
+
+// BuildDel is shorthand for Build(key, "DEL", key)
+func BuildDel(key string) *Cmd {
+	return Build(key, "DEL", key)
+}
+
+// BuildHset is shorthand for Build(key, "HSET", key, field, value)
+func BuildHset(key, field, value string) *Cmd {
+	return Build(key, "HSET", key, field, value)
 }
