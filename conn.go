@@ -2,15 +2,24 @@ package shredis
 
 import (
 	"bufio"
+	"fmt"
 	"net"
+	"sync"
 	"time"
 )
 
-type actionCB func(interface{}, error)
-
 type action struct {
-	payload []byte
-	done    actionCB
+	cmd *Cmd
+	wg  *sync.WaitGroup
+}
+
+func (a action) Done(res interface{}, err error) {
+	a.cmd.res = res
+	a.cmd.err = nil
+	if err != nil {
+		a.cmd.err = fmt.Errorf("shredis: %s", err)
+	}
+	a.wg.Done()
 }
 
 type conn chan []action
@@ -44,7 +53,7 @@ func (c conn) handle(addr string, onConnect []*Cmd) {
 					return false
 				}
 				for _, cmd := range cmds {
-					cmd.done(nil, err)
+					cmd.Done(nil, err)
 				}
 			}
 		}
@@ -97,7 +106,7 @@ loop:
 // loopConnection will keep writing commands to the server until either `c` is
 // closed or until we get any kind of error.
 func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn) error {
-	var outstanding []actionCB
+	var outstanding []action
 
 	for {
 		outstanding = outstanding[:0]
@@ -110,8 +119,8 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn) 
 				return nil
 			}
 			for _, a := range as {
-				w.Write(a.payload)
-				outstanding = append(outstanding, a.done)
+				w.Write(a.cmd.payload)
+				outstanding = append(outstanding, a)
 			}
 			// see if there are more commands waiting
 			select {
@@ -124,14 +133,14 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn) 
 
 		tcpconn.SetWriteDeadline(time.Now().Add(connTimeout))
 		if err := w.Flush(); err != nil {
-			for _, c := range outstanding {
-				c(nil, err)
+			for _, a := range outstanding {
+				a.Done(nil, err)
 			}
 			return err
 		}
 
 		var anyError error
-		for _, c := range outstanding {
+		for _, a := range outstanding {
 			tcpconn.SetReadDeadline(time.Now().Add(connTimeout))
 			res, err := readReply(r)
 			if err != nil {
@@ -144,7 +153,7 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn) 
 					res = nil
 				}
 			}
-			c(res, err)
+			a.Done(res, err)
 		}
 		if anyError != nil {
 			return anyError

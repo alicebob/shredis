@@ -12,7 +12,6 @@
 package shredis
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -86,21 +85,12 @@ func (s *Shred) Exec(cs ...*Cmd) {
 
 	// map every action to a connection, collect all actions per connection, and
 	// execute them at the same time
-	for _, c := range cs {
+	for i, c := range cs {
 		wg.Add(1)
 		conn := s.conn(c.key)
 		ac[conn] = append(ac[conn], action{
-			payload: c.payload,
-			done: func(c *Cmd) actionCB {
-				return func(res interface{}, err error) {
-					c.res = res
-					c.err = nil
-					if err != nil {
-						c.err = fmt.Errorf("shredis: %s", err)
-					}
-					wg.Done()
-				}
-			}(c),
+			cmd: cs[i],
+			wg:  &wg,
 		})
 	}
 	for c, vs := range ac {
