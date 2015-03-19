@@ -16,7 +16,7 @@ type action struct {
 type conn chan []action
 
 func newConn() conn {
-	return conn(make(chan []action, 10))
+	return make(conn, 10)
 }
 
 func (c conn) close() {

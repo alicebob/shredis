@@ -42,11 +42,9 @@ func md5Digest(in string) []byte {
 	return h.Sum(nil)
 }
 
-func hashKey(in string) uint {
-	// digest := md5Digest(in)
-	// return uint(digest[3])<<24 | uint(digest[2])<<16 | uint(digest[1])<<8 | uint(digest[0])
+func hashKey(in []byte) uint {
 	h := fnv.New64a()
-	h.Write([]byte(in))
+	h.Write(in)
 	return uint(uint32(h.Sum64()))
 }
 
@@ -94,8 +92,7 @@ func ketamaNew(buckets []bucket) continuum {
 	return cont
 }
 
-func (c continuum) Hash(thing string) string {
-
+func (c continuum) Hash(thing []byte) string {
 	if len(c) == 0 {
 		return ""
 	}

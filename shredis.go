@@ -111,10 +111,10 @@ func (s *Shred) Exec(cs ...*Cmd) {
 }
 
 func (s *Shred) conn(key []byte) conn {
-	return s.conns[s.ket.Hash(string(key))]
+	return s.conns[s.ket.Hash(key)]
 }
 
 // Addr gives the address for a key. For debugging/testing.
 func (s *Shred) Addr(key string) string {
-	return s.addrs[s.ket.Hash(key)]
+	return s.addrs[s.ket.Hash([]byte(key))]
 }

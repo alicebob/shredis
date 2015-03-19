@@ -19,11 +19,9 @@ type Cmd struct {
 // ('SELECT'), involve multiple servers ('MGET', 'MGET', 'RENAME'), or are not
 // simple command->reply ('WATCH').
 func Build(key string, fields ...string) *Cmd {
-	var b bytes.Buffer
-	writeCommand(&b, fields)
 	return &Cmd{
 		key:     []byte(key),
-		payload: b.Bytes(),
+		payload: buildCommand(fields),
 	}
 }
 
@@ -164,17 +162,17 @@ func resInt(x interface{}) (int, error) {
 	}
 }
 
-func writeCommand(b *bytes.Buffer, fields []string) {
-	writeLen(b, '*', len(fields))
+func buildCommand(fields []string) []byte {
+	var b bytes.Buffer
+	b.WriteByte('*')
+	b.WriteString(strconv.Itoa(len(fields)))
+	b.WriteString("\r\n")
 	for _, f := range fields {
-		writeLen(b, '$', len(f))
+		b.WriteByte('$')
+		b.WriteString(strconv.Itoa(len(f)))
+		b.WriteString("\r\n")
 		b.WriteString(f)
 		b.WriteString("\r\n")
 	}
-}
-
-func writeLen(b *bytes.Buffer, prefix rune, i int) {
-	b.WriteRune(prefix)
-	b.WriteString(strconv.Itoa(i))
-	b.WriteString("\r\n")
+	return b.Bytes()
 }

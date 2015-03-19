@@ -65,11 +65,9 @@ func TestBuilds(t *testing.T) {
 			payload: []string{"EXPIRE", "aap", "7"},
 		},
 	} {
-		var b bytes.Buffer
-		writeCommand(&b, c.payload)
 		want := &Cmd{
 			key:     []byte(c.key),
-			payload: b.Bytes(),
+			payload: buildCommand(c.payload),
 		}
 		if !bytes.Equal(c.have.payload, want.payload) {
 			t.Errorf("have: %q, want: %q", c.have.payload, want.payload)
