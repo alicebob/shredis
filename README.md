@@ -1,7 +1,5 @@
 A sharding Redis client, à la twemproxy/nutcracker.
 
-Status: work in progress
-
 See `example_test.go` for usage details.
 
 # Compat
