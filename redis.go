@@ -30,6 +30,11 @@ func BuildDel(key string) *Cmd {
 	return Build(key, "DEL", key)
 }
 
+// BuildHget is shorthand for Build(key, "HGET", key, field)
+func BuildHget(key, field string) *Cmd {
+	return Build(key, "HGET", key, field)
+}
+
 // BuildHset is shorthand for Build(key, "HSET", key, field, value)
 func BuildHset(key, field, value string) *Cmd {
 	return Build(key, "HSET", key, field, value)
