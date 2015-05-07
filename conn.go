@@ -139,24 +139,24 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn) 
 			return err
 		}
 
-		var anyError error
-		for _, a := range outstanding {
+		for i, a := range outstanding {
 			tcpconn.SetReadDeadline(time.Now().Add(connTimeout))
 			res, err := readReply(r)
 			if err != nil {
-				anyError = err
-			} else {
-				// 'ERR' replies. We don't close the connection for these, but
-				// we do report them as error.
-				if perr, ok := res.(error); ok {
-					err = perr
-					res = nil
+				a.Done(nil, err)
+				for _, b := range outstanding[i+1:] {
+					b.Done(nil, err)
 				}
+				return err
+			}
+
+			// 'ERR' replies. We don't close the connection for these, but
+			// we do report them as error.
+			if perr, ok := res.(error); ok {
+				err = perr
+				res = nil
 			}
 			a.Done(res, err)
-		}
-		if anyError != nil {
-			return anyError
 		}
 	}
 }
