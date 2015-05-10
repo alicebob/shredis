@@ -140,6 +140,37 @@ func (c *Cmd) GetMapIntString() (map[int]string, error) {
 	return res, nil
 }
 
+// GetMapStringInt returns the value if it's a map[string]int. If the key
+// is not set the returned map will be empty.
+func (c *Cmd) GetMapStringInt() (map[string]int, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	if c.res == nil {
+		return nil, nil
+	}
+	s, ok := c.res.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected value. have %T, want []interface{}", c.res)
+	}
+
+	res := make(map[string]int, len(s)/2)
+	for len(s) > 1 {
+		k, err := resString(s[0])
+		if err != nil {
+			return nil, err
+		}
+		v, err := resInt(s[1])
+		if err != nil {
+			return nil, err
+		}
+
+		res[k] = v
+		s = s[2:]
+	}
+	return res, nil
+}
+
 func resString(x interface{}) (string, error) {
 	switch k := x.(type) {
 	case []byte:
