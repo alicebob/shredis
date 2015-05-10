@@ -100,6 +100,34 @@ func (s *Shred) Exec(cs ...*Cmd) {
 	wg.Wait()
 }
 
+// MapExec builds a command out of fields and sends it to every redis. It'll
+// return the executed commands.
+func (s *Shred) MapExec(fields ...string) []*Cmd {
+	var (
+		wg   = sync.WaitGroup{}
+		cmds []*Cmd
+	)
+
+	for _, c := range s.conns {
+		wg.Add(1)
+		cmd := &Cmd{
+			// no key
+			payload: buildCommand(fields),
+		}
+		cmds = append(cmds, cmd)
+		c.exec([]action{
+			action{
+				cmd: cmd,
+				wg:  &wg,
+			},
+		})
+	}
+
+	wg.Wait()
+
+	return cmds
+}
+
 func (s *Shred) conn(key []byte) conn {
 	return s.conns[s.ket.Hash(key)]
 }
