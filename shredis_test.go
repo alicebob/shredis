@@ -271,3 +271,39 @@ func TestBrokenClose(t *testing.T) {
 	})
 	shr.Close()
 }
+
+func TestMap(t *testing.T) {
+	mr1, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mr1.Close()
+	mr2, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mr2.Close()
+	mr1.Set("count", "1")
+	mr2.Set("count", "2")
+
+	shr := New(map[string]string{
+		"shard0": mr1.Addr(),
+		"shard1": mr2.Addr(),
+	})
+
+	cmds := shr.MapExec("GET", "count")
+	total := 0
+	for _, c := range cmds {
+		n, err := c.GetInt()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		total += n
+
+	}
+	if have, want := total, 3; have != want {
+		t.Fatalf("have %v, want %v", have, want)
+	}
+
+	shr.Close()
+}

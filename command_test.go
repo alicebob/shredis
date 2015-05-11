@@ -208,7 +208,7 @@ func TestGetMapStringString(t *testing.T) {
 	}
 }
 
-func TestGetMapIngString(t *testing.T) {
+func TestGetMapIntString(t *testing.T) {
 	for _, c := range []struct {
 		have *Cmd
 		err  string
@@ -243,6 +243,54 @@ func TestGetMapIngString(t *testing.T) {
 		},
 	} {
 		s, err := c.have.GetMapIntString()
+		var haveerr string
+		if err != nil {
+			haveerr = err.Error()
+		}
+		if have, want := haveerr, c.err; have != want {
+			t.Errorf("have: %q, want: %q", have, want)
+		}
+		if have, want := s, c.want; !reflect.DeepEqual(have, want) {
+			t.Errorf("have: %q, want: %q", have, want)
+		}
+	}
+}
+
+func TestGetMapStringInt(t *testing.T) {
+	for _, c := range []struct {
+		have *Cmd
+		err  string
+		want map[string]int
+	}{
+		{
+			have: &Cmd{
+				res: []interface{}{
+					[]byte("string one"),
+					[]byte("1"),
+					[]byte("string two"),
+					2,
+				},
+			},
+			want: map[string]int{
+				"string one": 1,
+				"string two": 2,
+			},
+		},
+		{
+			have: &Cmd{
+				res: 12,
+			},
+			err:  "unexpected value. have int, want []interface{}",
+			want: nil,
+		},
+		{
+			have: &Cmd{
+				res: nil,
+			},
+			want: nil,
+		},
+	} {
+		s, err := c.have.GetMapStringInt()
 		var haveerr string
 		if err != nil {
 			haveerr = err.Error()
