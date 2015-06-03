@@ -60,6 +60,11 @@ func TestBuilds(t *testing.T) {
 			payload: []string{"SET", "aap", "noot", "EX", "7"},
 		},
 		{
+			have:    BuildSetNX("aap", "noot"),
+			key:     "aap",
+			payload: []string{"SETNX", "aap", "noot"},
+		},
+		{
 			have:    BuildExpire("aap", 7500*time.Millisecond),
 			key:     "aap",
 			payload: []string{"EXPIRE", "aap", "7"},
@@ -76,4 +81,52 @@ func TestBuilds(t *testing.T) {
 			t.Errorf("have: %v, want: %v", c.have.key, want.key)
 		}
 	}
+}
+
+func TestSetNX(t *testing.T) {
+	mr1, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mr1.Close()
+
+	shr := New(map[string]string{
+		"shard0": mr1.Addr(),
+	})
+
+	cmds := []*Cmd{
+		BuildSetNX("some", "thing"),
+		BuildSetNX("some", "other thing"),
+		BuildGet("some"),
+	}
+	shr.Exec(cmds...)
+	for i, c := range cmds {
+		switch i {
+		case 0:
+			res, err := c.GetInt()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if have, want := res, 1; have != want {
+				t.Fatalf("first SETNX: have %q, want %q", have, want)
+			}
+		case 1:
+			res, err := c.GetInt()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if have, want := res, 0; have != want {
+				t.Fatalf("second SETNX: have %q, want %q", have, want)
+			}
+		case 2:
+			res, err := c.GetString()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if have, want := res, "thing"; have != want {
+				t.Fatalf("GET: have %q (%T), want %q (%T)", have, have, want, want)
+			}
+		}
+	}
+	shr.Close()
 }

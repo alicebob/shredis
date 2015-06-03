@@ -21,6 +21,11 @@ func BuildSetEx(key, value string, ttl time.Duration) *Cmd {
 	return Build(key, "SET", key, value, "EX", strconv.Itoa(int(ttl.Seconds())))
 }
 
+// BuildSetNX builds a SETNX command
+func BuildSetNX(key, value string) *Cmd {
+	return Build(key, "SETNX", key, value)
+}
+
 // BuildExpire builds an EXPIRE
 func BuildExpire(key string, ttl time.Duration) *Cmd {
 	return Build(key, "EXPIRE", key, strconv.Itoa(int(ttl.Seconds())))
