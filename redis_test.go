@@ -60,6 +60,11 @@ func TestBuilds(t *testing.T) {
 			payload: []string{"SET", "aap", "noot", "EX", "7"},
 		},
 		{
+			have:    BuildSetNX("aap", "noot"),
+			key:     "aap",
+			payload: []string{"SETNX", "aap", "noot"},
+		},
+		{
 			have:    BuildExpire("aap", 7500*time.Millisecond),
 			key:     "aap",
 			payload: []string{"EXPIRE", "aap", "7"},
