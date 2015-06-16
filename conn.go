@@ -75,7 +75,7 @@ loop:
 		)
 
 		for _, cmd := range onConnect {
-			conn.SetWriteDeadline(time.Now().Add(connTimeout))
+			conn.SetDeadline(time.Now().Add(connTimeout))
 			if _, err := conn.Write(cmd.payload); err != nil {
 				conn.Close()
 				if !wait(err, 50*time.Millisecond) {
@@ -83,7 +83,6 @@ loop:
 				}
 				continue loop
 			}
-			conn.SetReadDeadline(time.Now().Add(connTimeout))
 			if _, err := readReply(r); err != nil {
 				// AUTH errors won't be flagged.
 				conn.Close()
@@ -132,7 +131,7 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn, 
 			}
 		}
 
-		tcpconn.SetWriteDeadline(time.Now().Add(connTimeout))
+		tcpconn.SetDeadline(time.Now().Add(connTimeout))
 		if err := w.Flush(); err != nil {
 			for _, a := range outstanding {
 				a.Done(nil, err)
@@ -142,7 +141,6 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn, 
 		}
 
 		for i, a := range outstanding {
-			tcpconn.SetReadDeadline(time.Now().Add(connTimeout))
 			res, err := readReply(r)
 			if err != nil {
 				a.Done(nil, err)

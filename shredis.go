@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	// connTimeout is the dial, read, and write timeout.
-	connTimeout = 50 * time.Millisecond
+	// timeout is the dial, read, and write timeout.
+	connTimeout = 1 * time.Second
 )
 
 // LogCB is optional callback to monitor batch performance. t is the time from
