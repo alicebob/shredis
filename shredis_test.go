@@ -307,3 +307,27 @@ func TestMap(t *testing.T) {
 
 	shr.Close()
 }
+
+func TestLog(t *testing.T) {
+	mr1, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mr1.Close()
+
+	logCount := 0
+	cb := func(_ string, c int, _ time.Duration, _ error) {
+		logCount += c
+	}
+	shr := New(map[string]string{
+		"shard0": mr1.Addr(),
+	}, OptionLog(cb))
+	defer shr.Close()
+
+	get := Build("TestKey", "SET", "foo", "bar")
+	shr.Exec(get, get, get)
+
+	if have, want := logCount, 3; have != want {
+		t.Fatalf("have %v, want %v", have, want)
+	}
+}

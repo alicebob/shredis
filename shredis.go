@@ -21,6 +21,11 @@ const (
 	connTimeout = 50 * time.Millisecond
 )
 
+// LogCB is optional callback to monitor batch performance. t is the time from
+// the first write to the last receive of a batch, and is only non-zero on
+// successful complete batch execution.
+type LogCB func(servername string, batchSize int, t time.Duration, err error)
+
 // Shred controls all connections. Make one with New().
 type Shred struct {
 	ket       continuum
@@ -28,6 +33,7 @@ type Shred struct {
 	addrs     map[string]string // just for debugging
 	onConnect []*Cmd
 	connwg    sync.WaitGroup
+	logCB     LogCB
 }
 
 // Option is an option to New.
@@ -40,6 +46,14 @@ func OptionAuth(pw string) Option {
 	}
 }
 
+// OptionLog is an option to New. It adds a callback which is executed once for
+// each batch send to redis.
+func OptionLog(l LogCB) Option {
+	return func(s *Shred) {
+		s.logCB = l
+	}
+}
+
 // New starts all connections to redis daemons.
 func New(hosts map[string]string, options ...Option) *Shred {
 	var (
@@ -48,6 +62,7 @@ func New(hosts map[string]string, options ...Option) *Shred {
 	s := &Shred{
 		conns: map[string]conn{},
 		addrs: hosts,
+		logCB: func(string, int, time.Duration, error) {},
 	}
 	for _, o := range options {
 		o(s)
@@ -59,7 +74,7 @@ func New(hosts map[string]string, options ...Option) *Shred {
 		s.connwg.Add(1)
 		c := newConn()
 		go func(h string) {
-			c.handle(h, s.onConnect)
+			c.handle(h, l, s.onConnect, s.logCB)
 			s.connwg.Done()
 		}(h)
 		s.conns[l] = c
