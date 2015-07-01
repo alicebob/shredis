@@ -31,6 +31,11 @@ func BuildSetNX(key, value string) *Cmd {
 	return BuildSetNx(key, value)
 }
 
+// BuildSetNxEx builds a SET with EX command
+func BuildSetNxEx(key, value string, ttl time.Duration) *Cmd {
+	return Build(key, "SET", key, value, "NX", "EX", strconv.Itoa(int(ttl.Seconds())))
+}
+
 // BuildExpire builds an EXPIRE
 func BuildExpire(key string, ttl time.Duration) *Cmd {
 	return Build(key, "EXPIRE", key, strconv.Itoa(int(ttl.Seconds())))
