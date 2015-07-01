@@ -60,7 +60,7 @@ func TestBuilds(t *testing.T) {
 			payload: []string{"SET", "aap", "noot", "EX", "7"},
 		},
 		{
-			have:    BuildSetNX("aap", "noot"),
+			have:    BuildSetNx("aap", "noot"),
 			key:     "aap",
 			payload: []string{"SETNX", "aap", "noot"},
 		},
@@ -95,8 +95,8 @@ func TestSetNX(t *testing.T) {
 	})
 
 	cmds := []*Cmd{
-		BuildSetNX("some", "thing"),
-		BuildSetNX("some", "other thing"),
+		BuildSetNx("some", "thing"),
+		BuildSetNx("some", "other thing"),
 		BuildGet("some"),
 	}
 	shr.Exec(cmds...)

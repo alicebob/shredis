@@ -21,9 +21,14 @@ func BuildSetEx(key, value string, ttl time.Duration) *Cmd {
 	return Build(key, "SET", key, value, "EX", strconv.Itoa(int(ttl.Seconds())))
 }
 
-// BuildSetNX builds a SETNX command
-func BuildSetNX(key, value string) *Cmd {
+// BuildSetNx builds a SETNX command
+func BuildSetNx(key, value string) *Cmd {
 	return Build(key, "SETNX", key, value)
+}
+
+// BuildSetNX is an alias for BuildSetNx
+func BuildSetNX(key, value string) *Cmd {
+	return BuildSetNx(key, value)
 }
 
 // BuildExpire builds an EXPIRE
