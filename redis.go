@@ -56,8 +56,8 @@ func BuildHset(key, field, value string) *Cmd {
 	return Build(key, "HSET", key, field, value)
 }
 
-// RedisInfoStat represents the [Stats] part of the 'INFO' command.
-type RedisInfoStat struct {
+// RedisInfoStats represents the [Stats] part of the 'INFO' command.
+type RedisInfoStats struct {
 	TotalConnectionsReceived,
 	TotalCommandsProcessed,
 	InstantaneousOpsPerSec,
@@ -78,61 +78,86 @@ type RedisInfoStat struct {
 	// LatestForkUsec int
 }
 
+// ParseInfoStats parses a 'INFO STATS' string.
+func ParseInfoStats(s string) (RedisInfoStats, error) {
+	r := RedisInfoStats{}
+	for k, v := range parseInfo(s) {
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return r, err
+		}
+		fi := int(f)
+		switch k {
+		case "total_connections_received":
+			r.TotalConnectionsReceived = fi
+		case "total_commands_processed":
+			r.TotalCommandsProcessed = fi
+		case "instantaneous_ops_per_sec":
+			r.InstantaneousOpsPerSec = fi
+		case "total_net_input_bytes":
+			r.TotalNetInputBytes = fi
+		case "total_net_output_bytes":
+			r.TotalNetOutputBytes = fi
+		case "instantaneous_input_kbps":
+			r.InstantaneousInputKbps = f
+		case "instantaneous_output_kbps":
+			r.InstantaneousOutputKbps = f
+		case "rejected_connections":
+			r.RejectedConnections = fi
+		case "sync_full":
+			r.SyncFull = fi
+		case "sync_partial_ok":
+			r.SyncPartialOk = fi
+		case "sync_partial_err":
+			r.SyncPartialErr = fi
+		case "expired_keys":
+			r.ExpiredKeys = fi
+		case "evicted_keys":
+			r.EvictedKeys = fi
+		case "keyspace_hits":
+			r.KeyspaceHits = fi
+		case "keyspace_misses":
+			r.KeyspaceMisses = fi
+		case "pubsub_channels":
+			r.PubsubChannels = fi
+		case "pubsub_patterns":
+			r.PubsubPatterns = fi
+		}
+	}
+	return r, nil
+}
+
 // ExecInfoStats calls 'INFO STATS' on every configured server and returns the
 // sum.  Or error, if any server gives an error.
-func ExecInfoStats(s *Shred) (RedisInfoStat, error) {
-	var sum RedisInfoStat
+func ExecInfoStats(s *Shred) (RedisInfoStats, error) {
+	var sum RedisInfoStats
 	cmds := s.MapExec("INFO", "STATS")
 	for _, c := range cmds {
 		s, err := c.GetString()
 		if err != nil {
 			return sum, err
 		}
-
-		for k, v := range parseInfo(s) {
-			f, err := strconv.ParseFloat(v, 64)
-			if err != nil {
-				return sum, err
-			}
-			fi := int(f)
-			switch k {
-			case "total_connections_received":
-				sum.TotalConnectionsReceived += fi
-			case "total_commands_processed":
-				sum.TotalCommandsProcessed += fi
-			case "instantaneous_ops_per_sec":
-				sum.InstantaneousOpsPerSec += fi
-			case "total_net_input_bytes":
-				sum.TotalNetInputBytes += fi
-			case "total_net_output_bytes":
-				sum.TotalNetOutputBytes += fi
-			case "instantaneous_input_kbps":
-				sum.InstantaneousInputKbps += f
-			case "instantaneous_output_kbps":
-				sum.InstantaneousOutputKbps += f
-			case "rejected_connections":
-				sum.RejectedConnections += fi
-			case "sync_full":
-				sum.SyncFull += fi
-			case "sync_partial_ok":
-				sum.SyncPartialOk += fi
-			case "sync_partial_err":
-				sum.SyncPartialErr += fi
-			case "expired_keys":
-				sum.ExpiredKeys += fi
-			case "evicted_keys":
-				sum.EvictedKeys += fi
-			case "keyspace_hits":
-				sum.KeyspaceHits += fi
-			case "keyspace_misses":
-				sum.KeyspaceMisses += fi
-			case "pubsub_channels":
-				sum.PubsubChannels += fi
-			case "pubsub_patterns":
-				sum.PubsubPatterns += fi
-			}
-			// sum.LatestForkUsec = m["latest_fork_usec"]
+		r, err := ParseInfoStats(s)
+		if err != nil {
+			return sum, err
 		}
+		sum.TotalConnectionsReceived += r.TotalConnectionsReceived
+		sum.TotalCommandsProcessed += r.TotalCommandsProcessed
+		sum.InstantaneousOpsPerSec += r.InstantaneousOpsPerSec
+		sum.TotalNetInputBytes += r.TotalNetInputBytes
+		sum.TotalNetOutputBytes += r.TotalNetOutputBytes
+		sum.InstantaneousInputKbps += r.InstantaneousInputKbps
+		sum.InstantaneousOutputKbps += r.InstantaneousOutputKbps
+		sum.RejectedConnections += r.RejectedConnections
+		sum.SyncFull += r.SyncFull
+		sum.SyncPartialOk += r.SyncPartialOk
+		sum.SyncPartialErr += r.SyncPartialErr
+		sum.ExpiredKeys += r.ExpiredKeys
+		sum.EvictedKeys += r.EvictedKeys
+		sum.KeyspaceHits += r.KeyspaceHits
+		sum.KeyspaceMisses += r.KeyspaceMisses
+		sum.PubsubChannels += r.PubsubChannels
+		sum.PubsubPatterns += r.PubsubPatterns
 	}
 	return sum, nil
 }
@@ -142,6 +167,34 @@ type RedisInfoMemory struct {
 	UsedMemory,
 	UsedMemoryPeak,
 	UsedMemoryLua int
+}
+
+// ParseInfoMemory parses a 'INFO MEMORY' string.
+func ParseInfoMemory(s string) (RedisInfoMemory, error) {
+	r := RedisInfoMemory{}
+	for k, v := range parseInfo(s) {
+		switch k {
+		case "used_memory":
+			i, err := strconv.Atoi(v)
+			if err != nil {
+				return r, err
+			}
+			r.UsedMemory = i
+		case "used_memory_peak":
+			i, err := strconv.Atoi(v)
+			if err != nil {
+				return r, err
+			}
+			r.UsedMemoryPeak = i
+		case "used_memory_lua":
+			i, err := strconv.Atoi(v)
+			if err != nil {
+				return r, err
+			}
+			r.UsedMemoryLua = i
+		}
+	}
+	return r, nil
 }
 
 // ExecInfoMemory calls 'INFO MEMORY' on every configured server and returns the
@@ -154,19 +207,13 @@ func ExecInfoMemory(s *Shred) (RedisInfoMemory, error) {
 		if err != nil {
 			return sum, err
 		}
-		for k, v := range parseInfo(v) {
-			switch k {
-			case "used_memory":
-				i, _ := strconv.Atoi(v)
-				sum.UsedMemory += i
-			case "used_memory_peak":
-				i, _ := strconv.Atoi(v)
-				sum.UsedMemoryPeak += i
-			case "used_memory_lua":
-				i, _ := strconv.Atoi(v)
-				sum.UsedMemoryLua += i
-			}
+		r, err := ParseInfoMemory(v)
+		if err != nil {
+			return sum, err
 		}
+		sum.UsedMemory += r.UsedMemory
+		sum.UsedMemoryPeak += r.UsedMemoryPeak
+		sum.UsedMemoryLua += r.UsedMemoryLua
 	}
 	return sum, nil
 }
