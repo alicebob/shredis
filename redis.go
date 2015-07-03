@@ -62,6 +62,8 @@ type RedisInfoStat struct {
 	TotalConnectionsReceived,
 	TotalCommandsProcessed,
 	InstantaneousOpsPerSec,
+	TotalNetInputBytes,
+	TotalNetOutputBytes,
 	RejectedConnections,
 	SyncFull,
 	SyncPartialOk,
@@ -72,6 +74,8 @@ type RedisInfoStat struct {
 	KeyspaceMisses,
 	PubsubChannels,
 	PubsubPatterns int
+	InstantaneousInputKbps,
+	InstantaneousOutputKbps float64
 	// LatestForkUsec int
 }
 
@@ -92,37 +96,46 @@ func ExecInfoStats(s *Shred) (RedisInfoStat, error) {
 			if len(fields) != 2 {
 				continue
 			}
-			v, err := strconv.Atoi(fields[1])
+			v, err := strconv.ParseFloat(fields[1], 64)
 			if err != nil {
 				return sum, err
 			}
+			vi := int(v)
 			switch fields[0] {
 			case "total_connections_received":
-				sum.TotalConnectionsReceived += v
+				sum.TotalConnectionsReceived += vi
 			case "total_commands_processed":
-				sum.TotalCommandsProcessed += v
+				sum.TotalCommandsProcessed += vi
 			case "instantaneous_ops_per_sec":
-				sum.InstantaneousOpsPerSec += v
+				sum.InstantaneousOpsPerSec += vi
+			case "total_net_input_bytes":
+				sum.TotalNetInputBytes += vi
+			case "total_net_output_bytes":
+				sum.TotalNetOutputBytes += vi
+			case "instantaneous_input_kbps":
+				sum.InstantaneousInputKbps += v
+			case "instantaneous_output_kbps":
+				sum.InstantaneousOutputKbps += v
 			case "rejected_connections":
-				sum.RejectedConnections += v
+				sum.RejectedConnections += vi
 			case "sync_full":
-				sum.SyncFull += v
+				sum.SyncFull += vi
 			case "sync_partial_ok":
-				sum.SyncPartialOk += v
+				sum.SyncPartialOk += vi
 			case "sync_partial_err":
-				sum.SyncPartialErr += v
+				sum.SyncPartialErr += vi
 			case "expired_keys":
-				sum.ExpiredKeys += v
+				sum.ExpiredKeys += vi
 			case "evicted_keys":
-				sum.EvictedKeys += v
+				sum.EvictedKeys += vi
 			case "keyspace_hits":
-				sum.KeyspaceHits += v
+				sum.KeyspaceHits += vi
 			case "keyspace_misses":
-				sum.KeyspaceMisses += v
+				sum.KeyspaceMisses += vi
 			case "pubsub_channels":
-				sum.PubsubChannels += v
+				sum.PubsubChannels += vi
 			case "pubsub_patterns":
-				sum.PubsubPatterns += v
+				sum.PubsubPatterns += vi
 			}
 			// sum.LatestForkUsec = m["latest_fork_usec"]
 		}
