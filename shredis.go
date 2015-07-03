@@ -12,6 +12,7 @@
 package shredis
 
 import (
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -54,7 +55,8 @@ func OptionLog(l LogCB) Option {
 	}
 }
 
-// New starts all connections to redis daemons.
+// New starts all connections to redis daemons. `hosts` is a map with
+// shardname:address.
 func New(hosts map[string]string, options ...Option) *Shred {
 	var (
 		bs []bucket
@@ -141,6 +143,35 @@ func (s *Shred) MapExec(fields ...string) []*Cmd {
 	wg.Wait()
 
 	return cmds
+}
+
+// RandExec executes the given command on a randomly picked server. It returns
+// the shardname and address of the selected server.
+// You need to seed the random function once.
+func (s *Shred) RandExec(cmd *Cmd) (string, string) {
+	var (
+		shard string
+		wg    = sync.WaitGroup{}
+		r     = rand.Intn(len(s.conns))
+		i     = 0
+	)
+	for s := range s.conns {
+		if i == r {
+			shard = s
+			break
+		}
+		i++
+	}
+
+	wg.Add(1)
+	s.conns[shard].exec([]action{
+		action{
+			cmd: cmd,
+			wg:  &wg,
+		},
+	})
+	wg.Wait()
+	return shard, s.addrs[shard]
 }
 
 func (s *Shred) conn(key []byte) conn {
