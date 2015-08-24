@@ -74,6 +74,11 @@ func TestBuilds(t *testing.T) {
 			key:     "aap",
 			payload: []string{"EXPIRE", "aap", "7"},
 		},
+		{
+			have:    BuildTTL("aap"),
+			key:     "aap",
+			payload: []string{"TTL", "aap"},
+		},
 	} {
 		want := &Cmd{
 			key:     []byte(c.key),

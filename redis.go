@@ -41,6 +41,11 @@ func BuildExpire(key string, ttl time.Duration) *Cmd {
 	return Build(key, "EXPIRE", key, strconv.Itoa(int(ttl.Seconds())))
 }
 
+// BuildTTL is shorthand for Build(key, "TTL", key)
+func BuildTTL(key string) *Cmd {
+	return Build(key, "TTL", key)
+}
+
 // BuildDel is shorthand for Build(key, "DEL", key)
 func BuildDel(key string) *Cmd {
 	return Build(key, "DEL", key)
