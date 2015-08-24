@@ -331,3 +331,21 @@ func TestLog(t *testing.T) {
 		t.Fatalf("have %v, want %v", have, want)
 	}
 }
+
+func TestEmpty(t *testing.T) {
+	mr1, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mr1.Close()
+	mr1.Set("TestKey", "Value!")
+
+	shr := New(map[string]string{
+		"shard0": mr1.Addr(),
+	})
+
+	// Nothing here.
+	shr.Exec()
+
+	shr.Close()
+}
