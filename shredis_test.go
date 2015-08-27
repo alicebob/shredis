@@ -349,3 +349,63 @@ func TestEmpty(t *testing.T) {
 
 	shr.Close()
 }
+
+func TestShardExec(t *testing.T) {
+	mr1, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mr1.Close()
+	mr2, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mr2.Close()
+
+	var (
+		s1 = "shard1"
+		s2 = "shard2"
+		k  = "TestKey"
+		v1 = "Value!"
+		v2 = "Value@"
+	)
+
+	mr1.Set(k, v1)
+	mr2.Set(k, v2)
+
+	shr := New(map[string]string{
+		s1: mr1.Addr(),
+		s2: mr2.Addr(),
+	})
+
+	get := Build("", "GET", "TestKey")
+	if err := shr.ShardExec(s1, get); err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	value, err := get.Get()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if have, want := string(value.([]byte)), v1; have != want {
+		t.Fatalf("have %s, want %s", have, want)
+	}
+
+	get = Build("", "GET", "TestKey")
+	if err := shr.ShardExec(s2, get); err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	value, err = get.Get()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if have, want := string(value.([]byte)), v2; have != want {
+		t.Fatalf("have %s, want %s", have, want)
+	}
+
+	get = Build("", "GET", "TestKey")
+	if err := shr.ShardExec("bad shard", get); err == nil {
+		t.Fatal("expected an error")
+	}
+
+	shr.Close()
+}

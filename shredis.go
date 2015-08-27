@@ -12,6 +12,7 @@
 package shredis
 
 import (
+	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -172,6 +173,25 @@ func (s *Shred) RandExec(cmd *Cmd) (string, string) {
 	})
 	wg.Wait()
 	return shard, s.addrs[shard]
+}
+
+// ShardExec executes the given command on a specific server.
+func (s *Shred) ShardExec(shard string, cmd *Cmd) error {
+	conn, ok := s.conns[shard]
+	if !ok {
+		return fmt.Errorf("unknown shard: %s", shard)
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	conn.exec([]action{
+		action{
+			cmd: cmd,
+			wg:  &wg,
+		},
+	})
+	wg.Wait()
+	return nil
 }
 
 func (s *Shred) conn(key []byte) conn {
