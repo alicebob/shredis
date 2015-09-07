@@ -302,4 +302,22 @@ func TestGetMapStringInt(t *testing.T) {
 			t.Errorf("have: %q, want: %q", have, want)
 		}
 	}
+
+}
+func TestCmdErr(t *testing.T) {
+	c := Build("test")
+	if _, err := c.Get(); err != ErrNotExecuted {
+		t.Errorf("have: %q, want: %q", err, ErrNotExecuted)
+	}
+
+	c.res = 1
+	c.err = nil
+
+	if _, err := c.Get(); err != nil {
+		t.Errorf("have: %q, want: nil", err)
+	}
+
+	if _, err := c.Get(); err != ErrNotExecuted {
+		t.Errorf("have: %q, want: %q", err, ErrNotExecuted)
+	}
 }

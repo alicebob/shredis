@@ -2,8 +2,15 @@ package shredis
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
+)
+
+var (
+	// ErrNotExecuted is returned by all Get* commands if either the Cmd
+	// hasn't been executed by Exec(), or when a Get* has already been called.
+	ErrNotExecuted = errors.New("command not executed")
 )
 
 // Cmd is a redis command.
@@ -22,17 +29,20 @@ func Build(key string, fields ...string) *Cmd {
 	return &Cmd{
 		key:     []byte(key),
 		payload: buildCommand(fields),
+		err:     ErrNotExecuted,
 	}
 }
 
 // Get returns redis' result.
 func (c *Cmd) Get() (res interface{}, err error) {
+	defer func() { c.err = ErrNotExecuted }()
 	return c.res, c.err
 }
 
 // GetString returns the value if it's a single string. If the key is not set
 // the returned string will be empty.
 func (c *Cmd) GetString() (string, error) {
+	defer func() { c.err = ErrNotExecuted }()
 	if c.err != nil {
 		return "", c.err
 	}
@@ -45,6 +55,7 @@ func (c *Cmd) GetString() (string, error) {
 // GetStrings returns the value if it's a string slice. If the key is not set
 // the returned slice will be empty.
 func (c *Cmd) GetStrings() ([]string, error) {
+	defer func() { c.err = ErrNotExecuted }()
 	if c.err != nil {
 		return nil, c.err
 	}
@@ -70,6 +81,7 @@ func (c *Cmd) GetStrings() ([]string, error) {
 // string which can be converterd to an int. If the key is not set the value
 // will be 0.
 func (c *Cmd) GetInt() (int, error) {
+	defer func() { c.err = ErrNotExecuted }()
 	if c.err != nil {
 		return 0, c.err
 	}
@@ -82,6 +94,7 @@ func (c *Cmd) GetInt() (int, error) {
 // GetMapStringString returns the value if it's a map[string]string. If the key
 // is not set the returned map will be empty.
 func (c *Cmd) GetMapStringString() (map[string]string, error) {
+	defer func() { c.err = ErrNotExecuted }()
 	if c.err != nil {
 		return nil, c.err
 	}
@@ -112,6 +125,7 @@ func (c *Cmd) GetMapStringString() (map[string]string, error) {
 // GetMapIntString returns the value if it's a map[int]string. If the key
 // is not set the returned map will be empty.
 func (c *Cmd) GetMapIntString() (map[int]string, error) {
+	defer func() { c.err = ErrNotExecuted }()
 	if c.err != nil {
 		return nil, c.err
 	}
@@ -143,6 +157,7 @@ func (c *Cmd) GetMapIntString() (map[int]string, error) {
 // GetMapStringInt returns the value if it's a map[string]int. If the key
 // is not set the returned map will be empty.
 func (c *Cmd) GetMapStringInt() (map[string]int, error) {
+	defer func() { c.err = ErrNotExecuted }()
 	if c.err != nil {
 		return nil, c.err
 	}

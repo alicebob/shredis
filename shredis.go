@@ -131,6 +131,7 @@ func (s *Shred) MapExec(fields ...string) map[string]*Cmd {
 		cmd := &Cmd{
 			// no key
 			payload: buildCommand(fields),
+			err:     ErrNotExecuted,
 		}
 		cmds[shard] = cmd
 		c.exec([]action{
