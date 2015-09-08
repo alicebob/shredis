@@ -317,7 +317,7 @@ func TestCmdErr(t *testing.T) {
 		t.Errorf("have: %q, want: nil", err)
 	}
 
-	if _, err := c.Get(); err != ErrNotExecuted {
-		t.Errorf("have: %q, want: %q", err, ErrNotExecuted)
+	if _, err := c.Get(); err != ErrAlreadyGot {
+		t.Errorf("have: %q, want: %q", err, ErrAlreadyGot)
 	}
 }
