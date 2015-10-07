@@ -16,7 +16,6 @@ package shredis
 import (
 	"crypto/md5"
 	"fmt"
-	"hash/fnv"
 	"sort"
 )
 
@@ -42,10 +41,19 @@ func md5Digest(in string) []byte {
 	return h.Sum(nil)
 }
 
+// inline the FNV64a hash. Taken from stdlib: hash/fnv/fnv.go
+const (
+	offset64 uint64 = 14695981039346656037
+	prime64         = 1099511628211
+)
+
 func hashKey(in []byte) uint {
-	h := fnv.New64a()
-	h.Write(in)
-	return uint(uint32(h.Sum64()))
+	hash := offset64
+	for _, c := range in {
+		hash ^= uint64(c)
+		hash *= prime64
+	}
+	return uint(uint32(hash))
 }
 
 func ketamaNew(buckets []bucket) continuum {
