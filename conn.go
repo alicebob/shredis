@@ -38,7 +38,7 @@ func (c conn) exec(a []action) {
 
 // handle deals with all actions written to conn. onConnect are commands which
 // will be executed on connect. Used for authentication.
-func (c conn) handle(addr, name string, onConnect []*Cmd, log LogCB) {
+func (c conn) handle(addr, label string, onConnect []*Cmd, log LogCB) {
 	// wait runs when there is a connection problem. We don't want to
 	// queue requests, just error them right away.
 	// The returned bool is whether things are still ok.
@@ -93,7 +93,7 @@ loop:
 			}
 		}
 
-		if err := loopConnection(c, r, w, conn, name, log); err == nil {
+		if err := loopConnection(c, r, w, conn, label, log); err == nil {
 			// graceful shutdown
 			conn.Close()
 			break
@@ -104,7 +104,14 @@ loop:
 
 // loopConnection will keep writing commands to the server until either `c` is
 // closed or until we get any kind of error.
-func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn, name string, log LogCB) error {
+func loopConnection(
+	c conn,
+	r *bufio.Reader,
+	w *bufio.Writer,
+	tcpconn net.Conn,
+	label string,
+	log LogCB,
+) error {
 	var outstanding []action
 
 	for {
@@ -136,7 +143,7 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn, 
 			for _, a := range outstanding {
 				a.Done(nil, err)
 			}
-			log(name, len(outstanding), 0, err)
+			log(label, len(outstanding), 0, err)
 			return err
 		}
 
@@ -147,7 +154,7 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn, 
 				for _, b := range outstanding[i+1:] {
 					b.Done(nil, err)
 				}
-				log(name, len(outstanding), 0, err)
+				log(label, len(outstanding), 0, err)
 				return err
 			}
 
@@ -159,6 +166,6 @@ func loopConnection(c conn, r *bufio.Reader, w *bufio.Writer, tcpconn net.Conn, 
 			}
 			a.Done(res, err)
 		}
-		log(name, len(outstanding), time.Since(start), nil)
+		log(label, len(outstanding), time.Since(start), nil)
 	}
 }

@@ -31,8 +31,7 @@ type LogCB func(servername string, batchSize int, t time.Duration, err error)
 // Shred controls all connections. Make one with New().
 type Shred struct {
 	ket       continuum
-	conns     map[string]conn
-	addrs     map[string]string // just for debugging
+	shards    []shard
 	onConnect []*Cmd
 	connwg    sync.WaitGroup
 	logCB     LogCB
@@ -40,6 +39,11 @@ type Shred struct {
 
 // Option is an option to New.
 type Option func(*Shred)
+
+type shard struct {
+	label, addr string
+	conn        conn
+}
 
 // OptionAuth is an option to New. It supports the redis AUTH command.
 func OptionAuth(pw string) Option {
@@ -56,31 +60,35 @@ func OptionLog(l LogCB) Option {
 	}
 }
 
-// New starts all connections to redis daemons. `hosts` is a map with
+// New starts all connections to redis daemons. `shards` is a map with
 // shardname:address.
-func New(hosts map[string]string, options ...Option) *Shred {
-	var (
-		bs []bucket
-	)
+func New(shards map[string]string, options ...Option) *Shred {
 	s := &Shred{
-		conns: map[string]conn{},
-		addrs: hosts,
-		logCB: func(string, int, time.Duration, error) {},
+		shards: make([]shard, len(shards)),
+		logCB:  func(string, int, time.Duration, error) {},
 	}
 	for _, o := range options {
 		o(s)
 	}
 
-	for l, h := range hosts {
-		bs = append(bs, bucket{Label: l, Weight: 1})
-
+	var (
+		bs []bucket
+		i  = 0
+	)
+	for l, h := range shards {
+		bs = append(bs, bucket{Label: l, ID: i, Weight: 1})
 		s.connwg.Add(1)
 		c := newConn()
-		go func(h string) {
+		go func(l, h string) {
 			c.handle(h, l, s.onConnect, s.logCB)
 			s.connwg.Done()
-		}(h)
-		s.conns[l] = c
+		}(l, h)
+		s.shards[i] = shard{
+			conn:  c,
+			label: l,
+			addr:  h,
+		}
+		i++
 	}
 	s.ket = ketamaNew(bs)
 	return s
@@ -88,8 +96,8 @@ func New(hosts map[string]string, options ...Option) *Shred {
 
 // Close closes all connections. Blocks.
 func (s *Shred) Close() {
-	for _, c := range s.conns {
-		c.close()
+	for _, sh := range s.shards {
+		sh.conn.close()
 	}
 	s.connwg.Wait()
 }
@@ -98,21 +106,23 @@ func (s *Shred) Close() {
 func (s *Shred) Exec(cs ...*Cmd) {
 	var (
 		wg = sync.WaitGroup{}
-		ac = map[conn][]action{}
+		ac = make([][]action, len(s.shards))
 	)
 
 	// map every action to a connection, collect all actions per connection, and
 	// execute them at the same time
 	for i, c := range cs {
 		wg.Add(1)
-		conn := s.conn(c.key)
-		ac[conn] = append(ac[conn], action{
+		slot := int(s.ket.Hash(c.key))
+		ac[slot] = append(ac[slot], action{
 			cmd: cs[i],
 			wg:  &wg,
 		})
 	}
-	for c, vs := range ac {
-		c.exec(vs)
+	for i, vs := range ac {
+		if len(vs) > 0 {
+			s.shards[i].conn.exec(vs)
+		}
 	}
 
 	wg.Wait()
@@ -126,15 +136,15 @@ func (s *Shred) MapExec(fields ...string) map[string]*Cmd {
 		cmds = map[string]*Cmd{}
 	)
 
-	for shard, c := range s.conns {
+	for _, shard := range s.shards {
 		wg.Add(1)
 		cmd := &Cmd{
 			// no key
 			payload: buildCommand(fields),
 			err:     ErrNotExecuted,
 		}
-		cmds[shard] = cmd
-		c.exec([]action{
+		cmds[shard.label] = cmd
+		shard.conn.exec([]action{
 			action{
 				cmd: cmd,
 				wg:  &wg,
@@ -152,40 +162,37 @@ func (s *Shred) MapExec(fields ...string) map[string]*Cmd {
 // You need to seed the random function once.
 func (s *Shred) RandExec(cmd *Cmd) (string, string) {
 	var (
-		shard string
 		wg    = sync.WaitGroup{}
-		r     = rand.Intn(len(s.conns))
-		i     = 0
+		shard = s.shards[rand.Intn(len(s.shards))]
 	)
-	for s := range s.conns {
-		if i == r {
-			shard = s
-			break
-		}
-		i++
-	}
 
 	wg.Add(1)
-	s.conns[shard].exec([]action{
+	shard.conn.exec([]action{
 		action{
 			cmd: cmd,
 			wg:  &wg,
 		},
 	})
 	wg.Wait()
-	return shard, s.addrs[shard]
+	return shard.label, shard.addr
 }
 
 // ShardExec executes the given command on a specific server.
-func (s *Shred) ShardExec(shard string, cmd *Cmd) error {
-	conn, ok := s.conns[shard]
-	if !ok {
-		return fmt.Errorf("unknown shard: %s", shard)
+func (s *Shred) ShardExec(label string, cmd *Cmd) error {
+	var sh *shard
+	for _, si := range s.shards {
+		if si.label == label {
+			sh = &si
+			break
+		}
+	}
+	if sh == nil {
+		return fmt.Errorf("unknown shard: %s", label)
 	}
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	conn.exec([]action{
+	sh.conn.exec([]action{
 		action{
 			cmd: cmd,
 			wg:  &wg,
@@ -195,11 +202,7 @@ func (s *Shred) ShardExec(shard string, cmd *Cmd) error {
 	return nil
 }
 
-func (s *Shred) conn(key []byte) conn {
-	return s.conns[s.ket.Hash(key)]
-}
-
 // Addr gives the address for a key. For debugging/testing.
 func (s *Shred) Addr(key string) string {
-	return s.addrs[s.ket.Hash([]byte(key))]
+	return s.shards[s.ket.Hash([]byte(key))].label
 }

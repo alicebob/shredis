@@ -21,6 +21,7 @@ import (
 
 type bucket struct {
 	Label  string
+	ID     int
 	Weight int
 }
 
@@ -100,9 +101,9 @@ func ketamaNew(buckets []bucket) continuum {
 	return cont
 }
 
-func (c continuum) Hash(thing []byte) string {
+func (c continuum) Hash(thing []byte) int {
 	if len(c) == 0 {
-		return ""
+		return 0
 	}
 
 	h := hashKey(thing)
@@ -110,5 +111,5 @@ func (c continuum) Hash(thing []byte) string {
 	if i >= len(c) {
 		i = 0
 	}
-	return c[i].bucket.Label
+	return c[i].bucket.ID
 }
