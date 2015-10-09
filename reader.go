@@ -14,19 +14,12 @@ import (
 
 var (
 	// ErrProtocolError is returned on unexpected replies.
-	ErrProtocolError = errors.New("protocol error")
+	ErrProtocolError = errors.New("shredis: protocol error")
 )
 
-/*
-type protocolError string
-
-func (pe protocolError) Error() string {
-	return fmt.Sprintf("shredis: %s", string(pe))
-}
-*/
-
 type replyReader struct {
-	buf *bufio.Reader
+	buf     *bufio.Reader
+	scratch []byte
 }
 
 func newReplyReader(r io.Reader) *replyReader {
@@ -113,12 +106,14 @@ func (r *replyReader) bulk() (interface{}, error) {
 		return nil, err
 	}
 
-	p := make([]byte, n+2)
-	_, err = io.ReadFull(r.buf, p)
+	if len(r.scratch) < n+2 {
+		r.scratch = make([]byte, n+2)
+	}
+	_, err = io.ReadFull(r.buf, r.scratch[:n+2])
 	if err != nil {
 		return nil, err
 	}
-	return string(p[:n]), nil
+	return string(r.scratch[:n]), nil
 }
 
 func (r *replyReader) array() (interface{}, error) {
