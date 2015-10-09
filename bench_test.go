@@ -14,32 +14,39 @@ func Benchmark(b *testing.B) {
 	})
 
 	b.ResetTimer()
-	work := prepareWork(100, 0.5)
+	reads, writes := prepareWork(100, 100)
 	for i := 0; i < b.N; i++ {
-		doWork(b, sh, work)
+		doWork(b, sh, reads, writes)
 	}
 }
 
-func prepareWork(n int, write float64) []*Cmd {
-	var cmds []*Cmd
-	writeN := int(float64(n) * write)
-	readN := n - writeN
+func prepareWork(readN, writeN int) ([]*Cmd, []*Cmd) {
+	var reads, writes []*Cmd
 	for i := 0; i < writeN; i++ {
 		key := fmt.Sprintf("key%d", i)
-		cmds = append(cmds, Build(key, "HSET", key, "aap", "noot"))
+		writes = append(writes, Build(key, "HSET", key, "aap", "noot"))
 	}
 	for i := 0; i < readN; i++ {
 		key := fmt.Sprintf("key%d", i)
-		cmds = append(cmds, Build(key, "HGET", key, "aap"))
+		reads = append(reads, Build(key, "HGET", key, "aap"))
 	}
-	return cmds
+	return reads, writes
 }
 
-func doWork(b *testing.B, sh *Shred, work []*Cmd) {
-	sh.Exec(work...)
-	for _, w := range work {
+func doWork(b *testing.B, sh *Shred, reads []*Cmd, writes []*Cmd) {
+	sh.Exec(append(writes, reads...)...)
+	for _, w := range writes {
 		if _, err := w.Get(); err != nil {
 			b.Error(err)
+		}
+	}
+	for _, w := range reads {
+		if v, err := w.GetString(); err != nil {
+			b.Error(err)
+		} else {
+			if have, want := v, "noot"; have != want {
+				b.Errorf("have %v, want %v", have, want)
+			}
 		}
 	}
 }
