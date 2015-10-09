@@ -35,6 +35,14 @@ func TestReader(t *testing.T) {
 			want:    -123,
 		},
 		{
+			payload: ":1-123\r\n",
+			err:     ErrProtocolError,
+		},
+		{
+			payload: ":1.123\r\n",
+			err:     ErrProtocolError,
+		},
+		{
 			payload: "$6\r\nfoobar\r\n",
 			want:    "foobar",
 		},
@@ -74,7 +82,7 @@ func TestReader(t *testing.T) {
 			t.Errorf("have %v want %v; %q", err, c.err, c.payload)
 			continue
 		}
-		if !reflect.DeepEqual(have, c.want) {
+		if c.err == nil && !reflect.DeepEqual(have, c.want) {
 			t.Errorf("have %#v (%T) want %#v (%T); %q", have, have, c.want,
 				c.want, c.payload)
 		}

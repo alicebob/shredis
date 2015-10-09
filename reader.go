@@ -71,10 +71,13 @@ func (r *replyReader) readInt() (int, error) {
 	}
 	negate := false
 	n := 0
-	for _, c := range p[:len(p)-2] {
+	for i, c := range p[:len(p)-2] {
 		switch c {
 		case '-':
-			negate = true // FIXME: allow only for first char
+			if i != 0 {
+				return 0, ErrProtocolError
+			}
+			negate = true
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			n *= 10
 			n += int(c - '0')
