@@ -70,7 +70,7 @@ loop:
 		}
 
 		var (
-			r = bufio.NewReader(conn)
+			r = newReplyReader(conn)
 			w = bufio.NewWriter(conn)
 		)
 
@@ -83,7 +83,7 @@ loop:
 				}
 				continue loop
 			}
-			if _, err := readReply(r); err != nil {
+			if _, err := r.Next(); err != nil {
 				// AUTH errors won't be flagged.
 				conn.Close()
 				if !wait(err, 50*time.Millisecond) {
@@ -106,7 +106,7 @@ loop:
 // closed or until we get any kind of error.
 func loopConnection(
 	c conn,
-	r *bufio.Reader,
+	r *replyReader,
 	w *bufio.Writer,
 	tcpconn net.Conn,
 	label string,
@@ -148,7 +148,7 @@ func loopConnection(
 		}
 
 		for i, a := range outstanding {
-			res, err := readReply(r)
+			res, err := r.Next()
 			if err != nil {
 				a.Done(nil, err)
 				for _, b := range outstanding[i+1:] {
