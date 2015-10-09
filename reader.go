@@ -65,15 +65,12 @@ func (r *replyReader) readInt() (int, error) {
 	negate := false
 	n := 0
 	for i, c := range p[:len(p)-2] {
-		switch c {
-		case '-':
-			if i != 0 {
-				return 0, ErrProtocolError
-			}
-			negate = true
-		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		switch {
+		case c >= '0' && c <= '9':
 			n *= 10
 			n += int(c - '0')
+		case i == 0 && c == '-':
+			negate = true
 		default:
 			return 0, ErrProtocolError
 		}
