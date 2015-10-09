@@ -28,7 +28,11 @@ func TestReader(t *testing.T) {
 		},
 		{
 			payload: ":1000\r\n",
-			want:    int64(1000),
+			want:    1000,
+		},
+		{
+			payload: ":-123\r\n",
+			want:    -123,
 		},
 		{
 			payload: "$6\r\nfoobar\r\n",
@@ -52,11 +56,11 @@ func TestReader(t *testing.T) {
 		},
 		{
 			payload: "*3\r\n:1\r\n:2\r\n:3\r\n",
-			want:    []interface{}{int64(1), int64(2), int64(3)},
+			want:    []interface{}{1, 2, 3},
 		},
 		{
 			payload: "*5\r\n:1\r\n:2\r\n:3\r\n:4\r\n$6\r\nfoobar\r\n",
-			want:    []interface{}{int64(1), int64(2), int64(3), int64(4), []byte("foobar")},
+			want:    []interface{}{1, 2, 3, 4, []byte("foobar")},
 		},
 		{
 			payload: "*-1\r\n",
@@ -74,5 +78,43 @@ func TestReader(t *testing.T) {
 			t.Errorf("have %#v (%T) want %#v (%T); %q", have, have, c.want,
 				c.want, c.payload)
 		}
+		/*
+			if r.buffered() != 0 {
+				t.Errorf("leftover bytes: %q", r.buf[r.r:r.w])
+			}
+		*/
+	}
+}
+
+func TestReaderMulti(t *testing.T) {
+	// multiple commands in single buffer
+	type cas struct {
+		payload string
+		wants   []interface{}
+		err     error
+	}
+	for _, c := range []cas{
+		{
+			payload: ":1000\r\n:4321\r\n",
+			wants:   []interface{}{1000, 4321},
+		},
+	} {
+		b := strings.NewReader(c.payload)
+		r := newReplyReader(b)
+		for _, want := range c.wants {
+			have, err := r.Next()
+			if err != c.err {
+				t.Errorf("have %v want %v; %q", err, c.err, c.payload)
+				continue
+			}
+			if !reflect.DeepEqual(have, want) {
+				t.Errorf("have %#v (%T) want %#v (%T); %q", have, have, want, want, c.payload)
+			}
+		}
+		/*
+			if r.buffered() != 0 {
+				t.Errorf("leftover bytes: %q", r.buf[r.r:r.w])
+			}
+		*/
 	}
 }
