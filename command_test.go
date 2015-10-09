@@ -33,7 +33,7 @@ func TestGetString(t *testing.T) {
 	}{
 		{
 			have: &Cmd{
-				res: []byte("a string"),
+				res: "a string",
 			},
 			want: "a string",
 		},
@@ -41,7 +41,7 @@ func TestGetString(t *testing.T) {
 			have: &Cmd{
 				res: 12,
 			},
-			err:  "unexpected value. have int, want []byte",
+			err:  "unexpected value. have int, want string",
 			want: "",
 		},
 		{
@@ -74,8 +74,8 @@ func TestGetStrings(t *testing.T) {
 		{
 			have: &Cmd{
 				res: []interface{}{
-					[]byte("string one"),
-					[]byte("string two"),
+					"string one",
+					"string two",
 				},
 			},
 			want: []string{"string one", "string two"},
@@ -116,7 +116,7 @@ func TestGetInt(t *testing.T) {
 	}{
 		{
 			have: &Cmd{
-				res: []byte("42"),
+				res: "42",
 			},
 			want: 42,
 		},
@@ -128,13 +128,13 @@ func TestGetInt(t *testing.T) {
 		},
 		{
 			have: &Cmd{
-				res: int64(12),
+				res: 12,
 			},
 			want: 12,
 		},
 		{
 			have: &Cmd{
-				res: []byte("a string"),
+				res: "a string",
 			},
 			err: "strconv.ParseInt: parsing \"a string\": invalid syntax",
 		},
@@ -169,10 +169,10 @@ func TestGetMapStringString(t *testing.T) {
 		{
 			have: &Cmd{
 				res: []interface{}{
-					[]byte("key one"),
-					[]byte("string one"),
-					[]byte("key two"),
-					[]byte("string two"),
+					"key one",
+					"string one",
+					"key two",
+					"string two",
 				},
 			},
 			want: map[string]string{
@@ -217,10 +217,10 @@ func TestGetMapIntString(t *testing.T) {
 		{
 			have: &Cmd{
 				res: []interface{}{
-					[]byte("1"),
-					[]byte("string one"),
+					"1",
+					"string one",
 					2,
-					[]byte("string two"),
+					"string two",
 				},
 			},
 			want: map[int]string{
@@ -265,9 +265,9 @@ func TestGetMapStringInt(t *testing.T) {
 		{
 			have: &Cmd{
 				res: []interface{}{
-					[]byte("string one"),
-					[]byte("1"),
-					[]byte("string two"),
+					"string one",
+					"1",
+					"string two",
 					2,
 				},
 			},

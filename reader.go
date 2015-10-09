@@ -1,5 +1,11 @@
 package shredis
 
+// All replies are build of the types:
+//   - string
+//   - int
+//   - error
+//   - interface{} arrays of the above types
+
 import (
 	"bufio"
 	"errors"
@@ -109,7 +115,7 @@ func (r *replyReader) bulk() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return p[:n], nil
+	return string(p[:n]), nil
 }
 
 func (r *replyReader) array() (interface{}, error) {

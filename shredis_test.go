@@ -27,7 +27,7 @@ func TestBasic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if have, want := string(value.([]byte)), "Value!"; have != want {
+	if have, want := value.(string), "Value!"; have != want {
 		t.Fatalf("have %q (%T), want %q (%T)", have, have, want, want)
 	}
 
@@ -97,7 +97,7 @@ func TestMultiple(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if have, want := string(res.([]byte)), fmt.Sprintf("Value: %d", 10-i); have != want {
+		if have, want := res.(string), fmt.Sprintf("Value: %d", 10-i); have != want {
 			t.Fatalf("have %q (%T), want %q (%T)", have, have, want, want)
 		}
 	}
@@ -130,7 +130,7 @@ func TestHashed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %s", err)
 	}
-	if have, want := string(res.([]byte)), "Value!"; have != want {
+	if have, want := res.(string), "Value!"; have != want {
 		t.Fatalf("have %q (%T), want %q (%T)", have, have, want, want)
 	}
 }
@@ -178,7 +178,7 @@ func TestMany(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if have, want := string(res.([]byte)), "value for "+key; have != want {
+			if have, want := res.(string), "value for "+key; have != want {
 				t.Fatalf("have: %v, want :%v", have, want)
 			}
 		}
@@ -218,7 +218,7 @@ func TestAuth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if have, want := string(res.([]byte)), "Value!"; have != want {
+	if have, want := res.(string), "Value!"; have != want {
 		t.Fatalf("have %q (%T), want %q (%T)", have, have, want, want)
 	}
 
@@ -386,7 +386,7 @@ func TestShardExec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if have, want := string(value.([]byte)), v1; have != want {
+	if have, want := value.(string), v1; have != want {
 		t.Fatalf("have %s, want %s", have, want)
 	}
 
@@ -398,7 +398,7 @@ func TestShardExec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if have, want := string(value.([]byte)), v2; have != want {
+	if have, want := value.(string), v2; have != want {
 		t.Fatalf("have %s, want %s", have, want)
 	}
 

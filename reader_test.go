@@ -36,11 +36,11 @@ func TestReader(t *testing.T) {
 		},
 		{
 			payload: "$6\r\nfoobar\r\n",
-			want:    []byte("foobar"),
+			want:    "foobar",
 		},
 		{
 			payload: "$0\r\n\r\n",
-			want:    []byte(""),
+			want:    "",
 		},
 		{
 			payload: "$-1\r\n",
@@ -52,7 +52,7 @@ func TestReader(t *testing.T) {
 		},
 		{
 			payload: "*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n",
-			want:    []interface{}{[]byte("foo"), []byte("bar")},
+			want:    []interface{}{"foo", "bar"},
 		},
 		{
 			payload: "*3\r\n:1\r\n:2\r\n:3\r\n",
@@ -60,7 +60,7 @@ func TestReader(t *testing.T) {
 		},
 		{
 			payload: "*5\r\n:1\r\n:2\r\n:3\r\n:4\r\n$6\r\nfoobar\r\n",
-			want:    []interface{}{1, 2, 3, 4, []byte("foobar")},
+			want:    []interface{}{1, 2, 3, 4, "foobar"},
 		},
 		{
 			payload: "*-1\r\n",

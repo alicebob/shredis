@@ -198,10 +198,10 @@ func (c *Cmd) GetMapStringInt() (map[string]int, error) {
 
 func resString(x interface{}) (string, error) {
 	switch k := x.(type) {
-	case []byte:
-		return string(k), nil
+	case string:
+		return k, nil
 	default:
-		return "", fmt.Errorf("unexpected value. have %T, want []byte", x)
+		return "", fmt.Errorf("unexpected value. have %T, want string", x)
 	}
 }
 
@@ -209,12 +209,10 @@ func resInt(x interface{}) (int, error) {
 	switch k := x.(type) {
 	case int:
 		return k, nil
-	case int64:
-		return int(k), nil
-	case []byte:
-		return strconv.Atoi(string(k))
+	case string:
+		return strconv.Atoi(k)
 	default:
-		return 0, fmt.Errorf("unexpected value. have %T, want int", x)
+		return 0, fmt.Errorf("unexpected value. have %T, want int or string", x)
 	}
 }
 
