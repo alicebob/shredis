@@ -50,3 +50,9 @@ func doWork(b *testing.B, sh *Shred, reads []*Cmd, writes []*Cmd) {
 		}
 	}
 }
+
+func BenchmarkBuilding(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Build("key1", "HSET", "key1", "aap", "noot")
+	}
+}
