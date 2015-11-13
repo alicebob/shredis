@@ -17,6 +17,8 @@ import (
 	"crypto/md5"
 	"fmt"
 	"sort"
+
+	"github.com/realzeitmedia/fnv"
 )
 
 type bucket struct {
@@ -27,7 +29,7 @@ type bucket struct {
 
 type continuumPoint struct {
 	bucket bucket
-	point  uint
+	point  uint64
 }
 
 type continuum []continuumPoint
@@ -42,19 +44,10 @@ func md5Digest(in string) []byte {
 	return h.Sum(nil)
 }
 
-// inline the FNV64a hash. Taken from stdlib: hash/fnv/fnv.go
-const (
-	offset64 uint64 = 14695981039346656037
-	prime64         = 1099511628211
-)
-
-func hashKey(in []byte) uint {
-	hash := offset64
-	for _, c := range in {
-		hash ^= uint64(c)
-		hash *= prime64
-	}
-	return uint(uint32(hash))
+func hashKey(k []byte) uint64 {
+	h := fnv.New()
+	h = fnv.AddBytes(h, k)
+	return uint64(uint32(h)) // something nutcracker does
 }
 
 func ketamaNew(buckets []bucket) continuum {
@@ -86,7 +79,7 @@ func ketamaNew(buckets []bucket) continuum {
 
 			for h := 0; h < 4; h++ {
 				point := continuumPoint{
-					point:  uint(digest[3+h*4])<<24 | uint(digest[2+h*4])<<16 | uint(digest[1+h*4])<<8 | uint(digest[h*4]),
+					point:  uint64(digest[3+h*4])<<24 | uint64(digest[2+h*4])<<16 | uint64(digest[1+h*4])<<8 | uint64(digest[h*4]),
 					bucket: buckets[i],
 				}
 				ket = append(ket, point)
