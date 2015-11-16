@@ -45,8 +45,7 @@ func md5Digest(in string) []byte {
 }
 
 func hashKey(k []byte) uint64 {
-	h := fnv.New()
-	h = fnv.AddBytes(h, k)
+	h := fnv.AddBytes(fnv.New(), k)
 	return uint64(uint32(h)) // something nutcracker does
 }
 
