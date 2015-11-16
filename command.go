@@ -224,7 +224,7 @@ func buildCommand(fields []string) []byte {
 		b = append(b, '$')
 		b = strconv.AppendInt(b, int64(len(f)), 10)
 		b = append(b, '\r', '\n')
-		b = append(b, []byte(f)...)
+		b = append(b, f...)
 		b = append(b, '\r', '\n')
 	}
 	return b
