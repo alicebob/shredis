@@ -1,7 +1,6 @@
 package shredis
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"strconv"
@@ -217,16 +216,16 @@ func resInt(x interface{}) (int, error) {
 }
 
 func buildCommand(fields []string) []byte {
-	var b bytes.Buffer
-	b.WriteByte('*')
-	b.WriteString(strconv.Itoa(len(fields)))
-	b.WriteString("\r\n")
+	b := make([]byte, 0, 64)
+	b = append(b, '*')
+	b = strconv.AppendInt(b, int64(len(fields)), 10)
+	b = append(b, '\r', '\n')
 	for _, f := range fields {
-		b.WriteByte('$')
-		b.WriteString(strconv.Itoa(len(f)))
-		b.WriteString("\r\n")
-		b.WriteString(f)
-		b.WriteString("\r\n")
+		b = append(b, '$')
+		b = strconv.AppendInt(b, int64(len(f)), 10)
+		b = append(b, '\r', '\n')
+		b = append(b, f...)
+		b = append(b, '\r', '\n')
 	}
-	return b.Bytes()
+	return b
 }
