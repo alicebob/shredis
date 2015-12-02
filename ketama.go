@@ -44,8 +44,8 @@ func md5Digest(in string) []byte {
 	return h.Sum(nil)
 }
 
-func hashKey(k []byte) uint64 {
-	h := fnv.AddBytes(fnv.New(), k)
+func hashKey(k string) uint64 {
+	h := fnv.Add(fnv.New(), k)
 	return uint64(uint32(h)) // something nutcracker does
 }
 
@@ -93,7 +93,7 @@ func ketamaNew(buckets []bucket) continuum {
 	return cont
 }
 
-func (c continuum) Hash(thing []byte) int {
+func (c continuum) Hash(thing string) int {
 	if len(c) == 0 {
 		return 0
 	}

@@ -204,5 +204,5 @@ func (s *Shred) ShardExec(label string, cmd *Cmd) error {
 
 // Addr gives the address for a key. For debugging/testing.
 func (s *Shred) Addr(key string) string {
-	return s.shards[s.ket.Hash([]byte(key))].label
+	return s.shards[s.ket.Hash(key)].label
 }

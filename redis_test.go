@@ -81,13 +81,13 @@ func TestBuilds(t *testing.T) {
 		},
 	} {
 		want := &Cmd{
-			key:     []byte(c.key),
+			key:     c.key,
 			payload: buildCommand(c.payload, nil),
 		}
 		if !bytes.Equal(c.have.payload, want.payload) {
 			t.Errorf("have: %q, want: %q", c.have.payload, want.payload)
 		}
-		if !bytes.Equal(c.have.key, want.key) {
+		if c.have.key != want.key {
 			t.Errorf("have: %v, want: %v", c.have.key, want.key)
 		}
 	}

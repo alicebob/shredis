@@ -18,7 +18,7 @@ var (
 
 // Cmd is a redis command.
 type Cmd struct {
-	key     []byte
+	key     string
 	payload []byte
 	res     interface{}
 	err     error
@@ -30,7 +30,7 @@ type Cmd struct {
 // simple command->reply ('WATCH').
 func Build(key string, fields ...string) *Cmd {
 	return &Cmd{
-		key:     []byte(key),
+		key:     key,
 		payload: buildCommand(fields, make([]byte, 0, 64)),
 		err:     ErrNotExecuted,
 	}
@@ -46,7 +46,7 @@ var poolCmds = sync.Pool{
 // them back in the queue.
 func PooledBuild(key string, fields ...string) *Cmd {
 	c := poolCmds.Get().(*Cmd)
-	c.key = []byte(key)
+	c.key = key
 	c.payload = buildCommand(fields, c.payload[:0])
 	c.err = ErrNotExecuted
 	return c
