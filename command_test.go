@@ -11,7 +11,7 @@ func TestCommand(t *testing.T) {
 		{
 			have: Build("k", "GET", "k"),
 			want: &Cmd{
-				key:     "k",
+				hash:    2248277386,
 				payload: []byte("*2\r\n$3\r\nGET\r\n$1\r\nk\r\n"),
 			},
 		},
@@ -19,8 +19,8 @@ func TestCommand(t *testing.T) {
 		if !bytes.Equal(c.have.payload, c.want.payload) {
 			t.Errorf("have: %q, want: %q", c.have.payload, c.want.payload)
 		}
-		if c.have.key != c.want.key {
-			t.Errorf("have: %v, want: %v", c.have.key, c.want.key)
+		if c.have.hash != c.want.hash {
+			t.Errorf("have: %v, want: %v", c.have.hash, c.want.hash)
 		}
 	}
 }

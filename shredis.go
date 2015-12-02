@@ -113,7 +113,7 @@ func (s *Shred) Exec(cs ...*Cmd) {
 	// execute them at the same time
 	for i, c := range cs {
 		wg.Add(1)
-		slot := int(s.ket.Hash(c.key))
+		slot := s.ket.Slot(c.hash)
 		ac[slot] = append(ac[slot], action{
 			cmd: cs[i],
 			wg:  &wg,
@@ -204,5 +204,5 @@ func (s *Shred) ShardExec(label string, cmd *Cmd) error {
 
 // Addr gives the address for a key. For debugging/testing.
 func (s *Shred) Addr(key string) string {
-	return s.shards[s.ket.Hash(key)].label
+	return s.shards[s.ket.Slot(hashKey(key))].label
 }

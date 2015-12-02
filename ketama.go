@@ -93,12 +93,11 @@ func ketamaNew(buckets []bucket) continuum {
 	return cont
 }
 
-func (c continuum) Hash(thing string) int {
+func (c continuum) Slot(h uint64) int {
 	if len(c) == 0 {
 		return 0
 	}
 
-	h := hashKey(thing)
 	i := sort.Search(len(c), func(i int) bool { return c[i].point >= h })
 	if i >= len(c) {
 		i = 0
