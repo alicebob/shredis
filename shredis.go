@@ -136,7 +136,9 @@ func (s *Shred) Exec(cs ...*Cmd) {
 		}
 	}
 
-	s.shards[firstSlotID].conn.exec(firstAc)
+	if len(firstAc) > 0 {
+		s.shards[firstSlotID].conn.exec(firstAc)
+	}
 	for i, vs := range ac {
 		if len(vs) > 0 {
 			s.shards[i].conn.exec(vs)
