@@ -105,19 +105,39 @@ func (s *Shred) Close() {
 // Exec is the way to execute commands. It is goroutine-safe.
 func (s *Shred) Exec(cs ...*Cmd) {
 	var (
-		wg = sync.WaitGroup{}
-		ac = make([][]action, len(s.shards))
+		wg          = sync.WaitGroup{}
+		ac          [][]action
+		firstSlotID int
+		firstAc     = make([]action, 0, len(cs))
 	)
+	// Assume all commands go to the same server unless proven otherwise. We
+	// only allocate the slice with actions per server when multiple shards are
+	// found.
 
-	// map every action to a connection, collect all actions per connection, and
-	// execute them at the same time
+	// Map every action to a connection, collect all actions per connection, and
+	// execute them at the same time.
 	for i, c := range cs {
 		wg.Add(1)
-		slot := s.ket.Slot(c.hash)
-		ac[slot] = append(ac[slot], action{
-			cmd: cs[i],
+		a := action{
+			cmd: c,
 			wg:  &wg,
-		})
+		}
+		slot := s.ket.Slot(c.hash)
+		if i == 0 {
+			firstSlotID = slot
+		}
+		if slot == firstSlotID {
+			firstAc = append(firstAc, a)
+		} else {
+			if ac == nil {
+				ac = make([][]action, len(s.shards))
+			}
+			ac[slot] = append(ac[slot], a)
+		}
+	}
+
+	if len(firstAc) > 0 {
+		s.shards[firstSlotID].conn.exec(firstAc)
 	}
 	for i, vs := range ac {
 		if len(vs) > 0 {
