@@ -1,7 +1,6 @@
 package shredis
 
 import (
-	"bufio"
 	"fmt"
 	"net"
 	"sync"
@@ -71,12 +70,12 @@ loop:
 
 		var (
 			r = newReplyReader(conn)
-			w = bufio.NewWriter(conn)
 		)
 
 		for _, cmd := range onConnect {
 			conn.SetDeadline(time.Now().Add(connTimeout))
-			if _, err := conn.Write(cmd.payload); err != nil {
+			b := appendCommand(cmd.fields, nil)
+			if _, err := conn.Write(b); err != nil {
 				conn.Close()
 				if !wait(err, 50*time.Millisecond) {
 					break loop
@@ -93,7 +92,7 @@ loop:
 			}
 		}
 
-		if err := loopConnection(c, r, w, conn, label, log); err == nil {
+		if err := loopConnection(c, r, conn, label, log); err == nil {
 			// graceful shutdown
 			conn.Close()
 			break
@@ -107,15 +106,18 @@ loop:
 func loopConnection(
 	c conn,
 	r *replyReader,
-	w *bufio.Writer,
 	tcpconn net.Conn,
 	label string,
 	log LogCB,
 ) error {
-	var outstanding []action
+	var (
+		outstanding []action
+		buf         []byte
+	)
 
 	for {
 		outstanding = outstanding[:0]
+		buf = buf[:0]
 		// read at least a single command, possibly more.
 		as, ok := <-c
 		start := time.Now()
@@ -126,7 +128,7 @@ func loopConnection(
 				return nil
 			}
 			for _, a := range as {
-				w.Write(a.cmd.payload)
+				buf = appendCommand(a.cmd.fields, buf)
 				outstanding = append(outstanding, a)
 			}
 			// see if there are more commands waiting
@@ -139,7 +141,7 @@ func loopConnection(
 		}
 
 		tcpconn.SetDeadline(time.Now().Add(connTimeout))
-		if err := w.Flush(); err != nil {
+		if _, err := tcpconn.Write(buf); err != nil {
 			for _, a := range outstanding {
 				a.Done(nil, err)
 			}
