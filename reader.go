@@ -58,23 +58,29 @@ func (r *replyReader) readString() (string, error) {
 }
 
 func (r *replyReader) readInt() (int, error) {
-	p, err := r.buf.ReadSlice('\n')
-	if err != nil {
-		return 0, err
-	}
-	negate := false
-	n := 0
-	for i, c := range p[:len(p)-2] {
+	var (
+		negate = false
+		n      = 0
+	)
+loop:
+	for i := 0; ; i++ {
+		c, err := r.buf.ReadByte()
+		if err != nil {
+			return 0, err
+		}
 		switch {
 		case c >= '0' && c <= '9':
-			n *= 10
-			n += int(c - '0')
+			n = n*10 + int(c-'0')
 		case i == 0 && c == '-':
 			negate = true
+		case c == '\r':
+			break loop
 		default:
 			return 0, ErrProtocolError
 		}
 	}
+	r.buf.ReadByte() // flush the \n
+
 	if negate {
 		n *= -1
 	}
