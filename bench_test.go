@@ -56,3 +56,26 @@ func BenchmarkBuilding(b *testing.B) {
 		Build("key1", "HSET", "key1", "aap", "noot")
 	}
 }
+
+func BenchmarkNoPrepare(b *testing.B) {
+	sh := New(map[string]string{
+		"shard0": "localhost:6379",
+		"shard1": "localhost:6379",
+		"shard2": "localhost:6379",
+		"shard3": "localhost:6379",
+	})
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cmds := []*Cmd{
+			Build("key", "HSET", "key", "aap", "noot"),
+			Build("key", "HGET", "key", "aap"),
+		}
+		sh.Exec(cmds...)
+		for _, c := range cmds {
+			if _, err := c.Get(); err != nil {
+				b.Error(err)
+			}
+		}
+	}
+}
