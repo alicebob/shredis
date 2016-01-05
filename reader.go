@@ -62,29 +62,31 @@ func (r *replyReader) readInt() (int, error) {
 		negate = false
 		n      = 0
 	)
-loop:
 	for i := 0; ; i++ {
 		c, err := r.buf.ReadByte()
 		if err != nil {
 			return 0, err
 		}
 		switch {
+
 		case c >= '0' && c <= '9':
 			n = n*10 + int(c-'0')
+
 		case i == 0 && c == '-':
 			negate = true
+
 		case c == '\r':
-			break loop
+			r.buf.ReadByte() // flush the \n
+			if negate {
+				n *= -1
+			}
+			return n, nil
+
 		default:
 			return 0, ErrProtocolError
+
 		}
 	}
-	r.buf.ReadByte() // flush the \n
-
-	if negate {
-		n *= -1
-	}
-	return n, nil
 }
 
 func (r *replyReader) simpleString() (string, error) {
