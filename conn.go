@@ -119,6 +119,7 @@ func loopConnection(
 		// read at least a single command, possibly more.
 		as, ok := <-c
 		start := time.Now()
+		timeout := time.After(collectTimeout)
 	loop:
 		for {
 			if !ok {
@@ -133,7 +134,7 @@ func loopConnection(
 			select {
 			case as, ok = <-c:
 				// go again
-			default:
+			case <-timeout:
 				break loop
 			}
 		}

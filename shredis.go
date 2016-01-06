@@ -19,8 +19,12 @@ import (
 )
 
 const (
-	// timeout is the dial, read, and write timeout.
+	// connTimeout is the dial, read, and write timeout.
 	connTimeout = 1 * time.Second
+
+	// collectTimeout is the duration to wait for new commands when
+	// building batches to one server.
+	collectTimeout = 5 * time.Millisecond
 )
 
 // LogCB is optional callback to monitor batch performance. t is the time from
