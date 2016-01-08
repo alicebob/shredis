@@ -1,7 +1,7 @@
 package shredis
 
 import (
-	"bytes"
+	"reflect"
 	"testing"
 	"time"
 
@@ -40,52 +40,52 @@ func TestGet(t *testing.T) {
 
 func TestBuilds(t *testing.T) {
 	for _, c := range []struct {
-		have    *Cmd
-		key     string
-		payload []string
+		have   *Cmd
+		key    string
+		fields []string
 	}{
 		{
-			have:    BuildGet("foo"),
-			key:     "foo",
-			payload: []string{"GET", "foo"},
+			have:   BuildGet("foo"),
+			key:    "foo",
+			fields: []string{"GET", "foo"},
 		},
 		{
-			have:    BuildSet("aap", "noot"),
-			key:     "aap",
-			payload: []string{"SET", "aap", "noot"},
+			have:   BuildSet("aap", "noot"),
+			key:    "aap",
+			fields: []string{"SET", "aap", "noot"},
 		},
 		{
-			have:    BuildSetEx("aap", "noot", 7500*time.Millisecond),
-			key:     "aap",
-			payload: []string{"SET", "aap", "noot", "EX", "7"},
+			have:   BuildSetEx("aap", "noot", 7500*time.Millisecond),
+			key:    "aap",
+			fields: []string{"SET", "aap", "noot", "EX", "7"},
 		},
 		{
-			have:    BuildSetNx("aap", "noot"),
-			key:     "aap",
-			payload: []string{"SETNX", "aap", "noot"},
+			have:   BuildSetNx("aap", "noot"),
+			key:    "aap",
+			fields: []string{"SETNX", "aap", "noot"},
 		},
 		{
-			have:    BuildSetNxEx("aap", "noot", 7500*time.Millisecond),
-			key:     "aap",
-			payload: []string{"SET", "aap", "noot", "NX", "EX", "7"},
+			have:   BuildSetNxEx("aap", "noot", 7500*time.Millisecond),
+			key:    "aap",
+			fields: []string{"SET", "aap", "noot", "NX", "EX", "7"},
 		},
 		{
-			have:    BuildExpire("aap", 7500*time.Millisecond),
-			key:     "aap",
-			payload: []string{"EXPIRE", "aap", "7"},
+			have:   BuildExpire("aap", 7500*time.Millisecond),
+			key:    "aap",
+			fields: []string{"EXPIRE", "aap", "7"},
 		},
 		{
-			have:    BuildTTL("aap"),
-			key:     "aap",
-			payload: []string{"TTL", "aap"},
+			have:   BuildTTL("aap"),
+			key:    "aap",
+			fields: []string{"TTL", "aap"},
 		},
 	} {
 		want := &Cmd{
-			hash:    hashKey(c.key),
-			payload: buildCommand(c.payload, nil),
+			hash:   hashKey(c.key),
+			fields: c.fields,
 		}
-		if !bytes.Equal(c.have.payload, want.payload) {
-			t.Errorf("have: %q, want: %q", c.have.payload, want.payload)
+		if !reflect.DeepEqual(c.have.fields, want.fields) {
+			t.Errorf("have: %q, want: %q", c.have.fields, want.fields)
 		}
 		if c.have.hash != want.hash {
 			t.Errorf("have: %v, want: %v", c.have.hash, want.hash)

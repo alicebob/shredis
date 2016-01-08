@@ -140,8 +140,8 @@ func (s *Shred) MapExec(fields ...string) map[string]*Cmd {
 		wg.Add(1)
 		cmd := &Cmd{
 			// no key
-			payload: buildCommand(fields, nil),
-			err:     ErrNotExecuted,
+			fields: fields,
+			err:    ErrNotExecuted,
 		}
 		cmds[shard.label] = cmd
 		shard.conn.exec([]action{

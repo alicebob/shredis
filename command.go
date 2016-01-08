@@ -17,10 +17,10 @@ var (
 
 // Cmd is a redis command.
 type Cmd struct {
-	hash    uint64
-	payload []byte
-	res     interface{}
-	err     error
+	hash   uint64
+	fields []string
+	res    interface{}
+	err    error
 }
 
 // Build makes a command which will be send to the shard for 'key'. All
@@ -29,9 +29,9 @@ type Cmd struct {
 // simple command->reply ('WATCH').
 func Build(key string, fields ...string) *Cmd {
 	return &Cmd{
-		hash:    hashKey(key),
-		payload: buildCommand(fields, make([]byte, 0, 64)),
-		err:     ErrNotExecuted,
+		hash:   hashKey(key),
+		fields: fields,
+		err:    ErrNotExecuted,
 	}
 }
 
@@ -215,7 +215,7 @@ func resInt(x interface{}) (int, error) {
 	}
 }
 
-func buildCommand(fields []string, b []byte) []byte {
+func appendCommand(fields []string, b []byte) []byte {
 	b = append(b, '*')
 	b = strconv.AppendInt(b, int64(len(fields)), 10)
 	b = append(b, '\r', '\n')

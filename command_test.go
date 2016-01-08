@@ -1,7 +1,6 @@
 package shredis
 
 import (
-	"bytes"
 	"reflect"
 	"testing"
 )
@@ -11,13 +10,13 @@ func TestCommand(t *testing.T) {
 		{
 			have: Build("k", "GET", "k"),
 			want: &Cmd{
-				hash:    2248277386,
-				payload: []byte("*2\r\n$3\r\nGET\r\n$1\r\nk\r\n"),
+				hash:   2248277386,
+				fields: []string{"GET", "k"},
 			},
 		},
 	} {
-		if !bytes.Equal(c.have.payload, c.want.payload) {
-			t.Errorf("have: %q, want: %q", c.have.payload, c.want.payload)
+		if !reflect.DeepEqual(c.have.fields, c.want.fields) {
+			t.Errorf("have: %v, want: %v", c.have.fields, c.want.fields)
 		}
 		if c.have.hash != c.want.hash {
 			t.Errorf("have: %v, want: %v", c.have.hash, c.want.hash)
