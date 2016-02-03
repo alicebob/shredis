@@ -327,7 +327,7 @@ func TestLog(t *testing.T) {
 	get := Build("TestKey", "SET", "foo", "bar")
 	shr.Exec(get, get, get)
 
-	if have, want := logCount, 3; have != want {
+	if have, want := logCount, 1; have != want {
 		t.Fatalf("have %v, want %v", have, want)
 	}
 }

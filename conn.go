@@ -9,20 +9,30 @@ import (
 )
 
 type action struct {
-	cmd *Cmd
-	wg  *sync.WaitGroup
+	cmds []*Cmd
+	wg   *sync.WaitGroup
 }
 
-func (a action) Done(res interface{}, err error) {
-	a.cmd.res = res
-	a.cmd.err = nil
-	if err != nil {
-		a.cmd.err = fmt.Errorf("shredis: %s", err)
-	}
+func (a action) done() {
 	a.wg.Done()
 }
 
-type conn chan []action
+func (a action) doneError(err error) {
+	for _, cmd := range a.cmds {
+		cmd.set(nil, err)
+	}
+	a.done()
+}
+
+func (c *Cmd) set(res interface{}, err error) {
+	c.res = res
+	c.err = nil
+	if err != nil {
+		c.err = fmt.Errorf("shredis: %s", err)
+	}
+}
+
+type conn chan action
 
 func newConn() conn {
 	return make(conn, 10)
@@ -32,7 +42,7 @@ func (c conn) close() {
 	close(c)
 }
 
-func (c conn) exec(a []action) {
+func (c conn) exec(a action) {
 	c <- a
 }
 
@@ -48,13 +58,11 @@ func (c conn) handle(addr, label string, onConnect []*Cmd, log LogCB) {
 			select {
 			case <-timeout:
 				return true
-			case cmds, ok := <-c:
+			case act, ok := <-c:
 				if !ok {
 					return false
 				}
-				for _, cmd := range cmds {
-					cmd.Done(nil, err)
-				}
+				act.doneError(err)
 			}
 		}
 	}
@@ -116,8 +124,8 @@ func loopConnection(
 
 	for {
 		outstanding = outstanding[:0]
-		// read at least a single command, possibly more.
-		as, ok := <-c
+		// read at least a single action, possibly more.
+		a, ok := <-c
 		start := time.Now()
 	loop:
 		for {
@@ -125,13 +133,13 @@ func loopConnection(
 				// graceful shutdown
 				return nil
 			}
-			for _, a := range as {
-				w.Write(a.cmd.payload)
-				outstanding = append(outstanding, a)
+			for _, cmd := range a.cmds {
+				w.Write(cmd.payload)
 			}
+			outstanding = append(outstanding, a)
 			// see if there are more commands waiting
 			select {
-			case as, ok = <-c:
+			case a, ok = <-c:
 				// go again
 			default:
 				break loop
@@ -141,30 +149,37 @@ func loopConnection(
 		tcpconn.SetDeadline(time.Now().Add(connTimeout))
 		if err := w.Flush(); err != nil {
 			for _, a := range outstanding {
-				a.Done(nil, err)
+				a.doneError(err)
 			}
 			log(label, len(outstanding), 0, err)
 			return err
 		}
 
 		for i, a := range outstanding {
-			res, err := r.Next()
-			if err != nil {
-				a.Done(nil, err)
-				for _, b := range outstanding[i+1:] {
-					b.Done(nil, err)
+			for j, cmd := range a.cmds {
+				res, err := r.Next()
+				if err != nil {
+					// cmd.set(nil, err)
+					for _, c := range a.cmds[j:] {
+						c.set(nil, err)
+					}
+					a.done()
+					for _, b := range outstanding[i+1:] {
+						b.doneError(err)
+					}
+					log(label, len(outstanding), 0, err)
+					return err
 				}
-				log(label, len(outstanding), 0, err)
-				return err
-			}
 
-			// 'ERR' replies. We don't close the connection for these, but
-			// we do report them as error.
-			if perr, ok := res.(error); ok {
-				err = perr
-				res = nil
+				// 'ERR' replies. We don't close the connection for these, but
+				// we do report them as error.
+				if perr, ok := res.(error); ok {
+					err = perr
+					res = nil
+				}
+				cmd.set(res, err)
 			}
-			a.Done(res, err)
+			a.done()
 		}
 		log(label, len(outstanding), time.Since(start), nil)
 	}
