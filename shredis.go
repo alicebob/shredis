@@ -14,6 +14,7 @@ package shredis
 import (
 	"fmt"
 	"math/rand"
+	"sort"
 	"sync"
 	"time"
 )
@@ -104,24 +105,26 @@ func (s *Shred) Close() {
 
 // Exec is the way to execute commands. It is goroutine-safe.
 func (s *Shred) Exec(cs ...*Cmd) {
-	var (
-		wg = sync.WaitGroup{}
-		ac = make([][]*Cmd, len(s.shards))
-	)
+	var wg = sync.WaitGroup{}
 
-	// map every action to a connection, collect all actions per connection, and
-	// execute them at the same time
-	for i, c := range cs {
-		slot := s.ket.Slot(c.hash)
-		ac[slot] = append(ac[slot], cs[i])
+	if len(cs) == 0 {
+		return
 	}
-	for i, vs := range ac {
-		if len(vs) > 0 {
+
+	for _, c := range cs {
+		c.slot = s.ket.Slot(c.hash)
+	}
+	sort.Stable(cmdsBySlot(cs))
+
+	// Collect all actions per connection, and execute them at the same time.
+	for i, j := 0, 1; j <= len(cs); j++ {
+		if j == len(cs) || cs[j].slot != cs[i].slot {
 			wg.Add(1)
-			s.shards[i].conn.exec(action{
-				cmds: vs,
+			s.shards[cs[i].slot].conn.exec(action{
+				cmds: cs[i:j],
 				wg:   &wg,
 			})
+			i = j
 		}
 	}
 

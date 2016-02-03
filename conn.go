@@ -2,7 +2,6 @@ package shredis
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -24,18 +23,10 @@ func (a action) doneError(err error) {
 	a.done()
 }
 
-func (c *Cmd) set(res interface{}, err error) {
-	c.res = res
-	c.err = nil
-	if err != nil {
-		c.err = fmt.Errorf("shredis: %s", err)
-	}
-}
-
 type conn chan action
 
 func newConn() conn {
-	return make(conn, 10)
+	return make(conn, 5)
 }
 
 func (c conn) close() {
@@ -159,7 +150,6 @@ func loopConnection(
 			for j, cmd := range a.cmds {
 				res, err := r.Next()
 				if err != nil {
-					// cmd.set(nil, err)
 					for _, c := range a.cmds[j:] {
 						c.set(nil, err)
 					}
