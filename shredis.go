@@ -14,6 +14,7 @@ package shredis
 import (
 	"fmt"
 	"math/rand"
+	"sort"
 	"sync"
 	"time"
 )
@@ -104,24 +105,26 @@ func (s *Shred) Close() {
 
 // Exec is the way to execute commands. It is goroutine-safe.
 func (s *Shred) Exec(cs ...*Cmd) {
-	var (
-		wg = sync.WaitGroup{}
-		ac = make([][]action, len(s.shards))
-	)
+	var wg = sync.WaitGroup{}
 
-	// map every action to a connection, collect all actions per connection, and
-	// execute them at the same time
-	for i, c := range cs {
-		wg.Add(1)
-		slot := s.ket.Slot(c.hash)
-		ac[slot] = append(ac[slot], action{
-			cmd: cs[i],
-			wg:  &wg,
-		})
+	if len(cs) == 0 {
+		return
 	}
-	for i, vs := range ac {
-		if len(vs) > 0 {
-			s.shards[i].conn.exec(vs)
+
+	for _, c := range cs {
+		c.slot = s.ket.Slot(c.hash)
+	}
+	sort.Stable(cmdsBySlot(cs))
+
+	// Collect all actions per connection, and execute them at the same time.
+	for i, j := 0, 1; j <= len(cs); j++ {
+		if j == len(cs) || cs[j].slot != cs[i].slot {
+			wg.Add(1)
+			s.shards[cs[i].slot].conn.exec(action{
+				cmds: cs[i:j],
+				wg:   &wg,
+			})
+			i = j
 		}
 	}
 
@@ -137,18 +140,16 @@ func (s *Shred) MapExec(fields ...string) map[string]*Cmd {
 	)
 
 	for _, shard := range s.shards {
-		wg.Add(1)
 		cmd := &Cmd{
 			// no key
 			payload: buildCommand(fields, nil),
 			err:     ErrNotExecuted,
 		}
 		cmds[shard.label] = cmd
-		shard.conn.exec([]action{
-			action{
-				cmd: cmd,
-				wg:  &wg,
-			},
+		wg.Add(1)
+		shard.conn.exec(action{
+			cmds: []*Cmd{cmd},
+			wg:   &wg,
 		})
 	}
 
@@ -167,11 +168,9 @@ func (s *Shred) RandExec(cmd *Cmd) (string, string) {
 	)
 
 	wg.Add(1)
-	shard.conn.exec([]action{
-		action{
-			cmd: cmd,
-			wg:  &wg,
-		},
+	shard.conn.exec(action{
+		cmds: []*Cmd{cmd},
+		wg:   &wg,
 	})
 	wg.Wait()
 	return shard.label, shard.addr
@@ -192,11 +191,9 @@ func (s *Shred) ShardExec(label string, cmd *Cmd) error {
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	sh.conn.exec([]action{
-		action{
-			cmd: cmd,
-			wg:  &wg,
-		},
+	sh.conn.exec(action{
+		cmds: []*Cmd{cmd},
+		wg:   &wg,
 	})
 	wg.Wait()
 	return nil
