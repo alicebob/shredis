@@ -104,13 +104,15 @@ func (s *Shred) Close() {
 }
 
 // Exec is the way to execute commands. It is goroutine-safe.
-func (s *Shred) Exec(cs ...*Cmd) {
+func (s *Shred) Exec(cmds ...*Cmd) {
 	var wg = sync.WaitGroup{}
 
-	if len(cs) == 0 {
+	if len(cmds) == 0 {
 		return
 	}
 
+	cs := make([]*Cmd, len(cmds))
+	copy(cs, cmds)
 	for _, c := range cs {
 		c.slot = s.ket.Slot(c.hash)
 	}
