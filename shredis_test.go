@@ -409,3 +409,61 @@ func TestShardExec(t *testing.T) {
 
 	shr.Close()
 }
+
+func TestStable(t *testing.T) {
+	mr1, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mr1.Close()
+	mr2, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mr2.Close()
+
+	shr := New(map[string]string{
+		"shard0": mr1.Addr(),
+		"shard1": mr2.Addr(),
+	})
+	defer shr.Close()
+
+	var (
+		k0   = "noooot"
+		k1   = "aap"
+		sets = []*Cmd{
+			Build(k1, "SET", k1, "x"),
+			Build(k0, "SET", k0, "y"),
+		}
+		gets = []*Cmd{
+			Build(k1, "GET", k1),
+			Build(k0, "GET", k0),
+		}
+		wants = []string{"x", "y"}
+	)
+	if have, want := shr.Addr(k0), "shard0"; have != want {
+		t.Fatalf("wrong shard: have %s, want %s", have, want)
+	}
+	if have, want := shr.Addr(k1), "shard1"; have != want {
+		t.Fatalf("wrong shard: have %s, want %s", have, want)
+	}
+
+	shr.Exec(sets...)
+	for _, c := range sets {
+		_, err := c.Get()
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+	}
+
+	shr.Exec(gets...)
+	for i := range gets {
+		have, err := gets[i].Get()
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if want := wants[i]; have != want {
+			t.Errorf("have %s, want %s", have, want)
+		}
+	}
+}
