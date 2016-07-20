@@ -18,7 +18,6 @@ var (
 // Cmd is a redis command.
 type Cmd struct {
 	hash    uint64
-	slot    int
 	payload []byte
 	res     interface{}
 	err     error
@@ -237,10 +236,3 @@ func buildCommand(fields []string, b []byte) []byte {
 	}
 	return b
 }
-
-// cmdsBySlot is a list of commands which can be sorted by slot, for Exec()
-type cmdsBySlot []*Cmd
-
-func (cs cmdsBySlot) Len() int           { return len(cs) }
-func (cs cmdsBySlot) Swap(i, j int)      { cs[i], cs[j] = cs[j], cs[i] }
-func (cs cmdsBySlot) Less(i, j int) bool { return cs[i].slot < cs[j].slot }
