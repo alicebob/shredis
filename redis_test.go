@@ -26,12 +26,12 @@ func TestGet(t *testing.T) {
 	)
 	shr.Exec(set, get)
 	if _, err := set.Get(); err != nil {
-		t.Errorf("SET() gave an error: %v", err)
+		t.Errorf("SET() gave an error")
 	}
 
 	v, err := get.GetString()
 	if err != nil {
-		t.Errorf("GET() gave an error: %v", err)
+		t.Errorf("GET() gave an error")
 	}
 	if have, want := v, "bar"; have != want {
 		t.Errorf("have %q, want %q", have, want)
